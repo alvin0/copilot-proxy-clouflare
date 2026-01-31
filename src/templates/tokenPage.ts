@@ -1,6 +1,33 @@
+import { QuotaDetail } from "../handlers/usage";
+
 type TokenPageState = {
   status?: "saved" | "invalid" | "kv-missing";
+  hasToken?: boolean;
+  usage?: {
+    chat: QuotaDetail;
+    completions: QuotaDetail;
+    premium_interactions: QuotaDetail;
+    quota_reset_date: string;
+    copilot_plan: string;
+  };
+  usageError?: string;
 };
+
+function renderQuotaCard(title: string, detail: QuotaDetail): string {
+  const remaining = detail.unlimited ? "Unlimited" : detail.remaining.toLocaleString();
+  const percent = detail.unlimited ? 100 : Math.max(0, Math.min(100, detail.percent_remaining));
+  return `<div class="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+    <div class="flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-slate-200">${title}</h3>
+      <span class="text-xs text-slate-400">Quota</span>
+    </div>
+    <div class="mt-3 text-2xl font-semibold text-slate-100">${remaining}</div>
+    <div class="mt-2 h-2 w-full rounded-full bg-slate-800">
+      <div class="h-2 rounded-full bg-cyan-400" style="width:${percent}%"></div>
+    </div>
+    <div class="mt-2 text-xs text-slate-400">${percent}% remaining</div>
+  </div>`;
+}
 
 export function renderTokenPage(state: TokenPageState = {}): string {
   const banner =
@@ -17,6 +44,31 @@ export function renderTokenPage(state: TokenPageState = {}): string {
           KV binding is missing. Configure TOKEN_KV first.
         </div>`
       : "";
+
+  const usageSection = state.usage
+    ? `<section class="mt-8">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-slate-100">Usage Dashboard</h2>
+          <span class="text-xs text-slate-400">Plan: ${state.usage.copilot_plan}</span>
+        </div>
+        <p class="mt-1 text-xs text-slate-400">Quota resets on ${state.usage.quota_reset_date}</p>
+        <div class="mt-4 grid gap-4 md:grid-cols-3">
+          ${renderQuotaCard("Chat", state.usage.chat)}
+          ${renderQuotaCard("Completions", state.usage.completions)}
+          ${renderQuotaCard("Premium Interactions", state.usage.premium_interactions)}
+        </div>
+      </section>`
+    : state.usageError
+    ? `<div class="mt-6 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+        Failed to load usage: ${state.usageError}
+      </div>`
+    : state.hasToken
+    ? `<div class="mt-6 rounded-lg border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
+        Token is stored. Usage data will appear here once available.
+      </div>`
+    : `<div class="mt-6 rounded-lg border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
+        No token stored yet. Save a token to load usage data.
+      </div>`;
 
   return `<!doctype html>
 <html lang="en">
@@ -59,6 +111,7 @@ export function renderTokenPage(state: TokenPageState = {}): string {
         <p class="mt-6 text-xs text-slate-400">
           For security, this page never displays the stored token.
         </p>
+        ${usageSection}
       </div>
     </div>
   </body>

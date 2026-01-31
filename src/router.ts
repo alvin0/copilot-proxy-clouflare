@@ -2,7 +2,9 @@ import { Hono } from "hono";
 import { handleChatCompletions } from "./handlers/chatCompletions";
 import { handleEmbeddings } from "./handlers/embeddings";
 import { handleModels } from "./handlers/models";
+import { getCopilotUsage } from "./handlers/usage";
 import { renderTokenPage } from "./templates/tokenPage";
+import { getStoredLongTermToken } from "./token";
 
 type EnvBindings = {
   TOKEN_KV?: KVNamespace;
@@ -10,9 +12,31 @@ type EnvBindings = {
 
 const app = new Hono<{ Bindings: EnvBindings }>();
 
-app.get("/", c => {
+app.get("/", async c => {
   const status = c.req.query("status") as "saved" | "invalid" | "kv-missing" | undefined;
-  return c.html(renderTokenPage({ status }));
+  let usage;
+  let usageError;
+  const storedToken = await getStoredLongTermToken(c.env?.TOKEN_KV);
+  if (storedToken) {
+    try {
+      const usageResponse = await getCopilotUsage(storedToken);
+      usage = {
+        chat: usageResponse.quota_snapshots.chat,
+        completions: usageResponse.quota_snapshots.completions,
+        premium_interactions: usageResponse.quota_snapshots.premium_interactions,
+        quota_reset_date: usageResponse.quota_reset_date,
+        copilot_plan: usageResponse.copilot_plan
+      };
+    } catch (e) {
+      usageError = e instanceof Error ? e.message : String(e);
+    }
+  }
+  return c.html(renderTokenPage({
+    status,
+    hasToken: Boolean(storedToken),
+    usage,
+    usageError
+  }));
 });
 
 app.post("/", async c => {

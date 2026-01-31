@@ -101,7 +101,7 @@ async function getValidTempToken(
   return newToken;
 }
 
-async function getStoredLongTermToken(kv?: KVNamespace): Promise<string | null> {
+export async function getStoredLongTermToken(kv?: KVNamespace): Promise<string | null> {
   if (!kv) return null;
   const value = await kv.get(LONG_TERM_TOKEN_KEY);
   return value ? value.trim() : null;
