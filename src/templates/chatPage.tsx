@@ -24,6 +24,8 @@ function ChatPage({ state }: { state: ChatPageState }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Chat</title>
         <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
       </head>
       <body className="min-h-screen bg-slate-950 text-slate-100">
         <div className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 px-6 py-10">
@@ -36,7 +38,7 @@ function ChatPage({ state }: { state: ChatPageState }) {
           </header>
 
           <section className="flex-1 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-            <div id="messages" className="space-y-4"></div>
+            <div id="messages" className="max-h-[60vh] space-y-4 overflow-y-auto pr-2"></div>
             <div id="loading" className="mt-4 hidden items-center gap-2 text-xs text-slate-400">
               <span className="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-400"></span>
               <span>LLM is thinking...</span>
@@ -56,7 +58,7 @@ function ChatPage({ state }: { state: ChatPageState }) {
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <label className="inline-flex items-center gap-2 text-xs text-slate-300">
-                  <input id="stream" type="checkbox" className="h-3.5 w-3.5 rounded border-slate-700 bg-slate-950/60" />
+                  <input id="stream" type="checkbox" checked className="h-3.5 w-3.5 rounded border-slate-700 bg-slate-950/60" />
                   Stream
                 </label>
                 <select
@@ -91,6 +93,12 @@ function ChatPage({ state }: { state: ChatPageState }) {
 
               const state = { messages: [], isSending: false };
 
+              function renderMarkdown(content) {
+                if (!window.marked) return content;
+                const html = window.marked.parse(content);
+                return window.DOMPurify ? window.DOMPurify.sanitize(html) : html;
+              }
+
               function createMessageElement(role, content) {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'rounded-xl border border-slate-800 bg-slate-950/40 p-4';
@@ -99,8 +107,12 @@ function ChatPage({ state }: { state: ChatPageState }) {
                 title.className = 'text-xs font-semibold uppercase tracking-wide text-slate-400';
                 title.textContent = role;
                 const body = document.createElement('div');
-                body.className = 'mt-2 whitespace-pre-wrap text-sm text-slate-100';
-                body.textContent = content;
+                body.className = 'mt-2 whitespace-pre-wrap text-sm text-slate-100 prose prose-invert max-w-none';
+                if (role === 'assistant') {
+                  body.innerHTML = renderMarkdown(content);
+                } else {
+                  body.textContent = content;
+                }
                 wrapper.appendChild(title);
                 wrapper.appendChild(body);
                 return { wrapper, body };
@@ -208,7 +220,7 @@ function ChatPage({ state }: { state: ChatPageState }) {
                       } catch (_) {}
                     }
                     state.messages[assistantIndex].content = assistantContent;
-                    assistantBodyEl.textContent = assistantContent;
+                    assistantBodyEl.innerHTML = renderMarkdown(assistantContent);
                     messagesEl.scrollTop = messagesEl.scrollHeight;
                   }
                   if (usageTokens !== null) {
