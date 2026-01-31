@@ -1,8 +1,52 @@
 import { copilotBaseUrl, copilotHeaders } from "../configs/api-config";
-import { ModelsResponse } from "../configs/get-models";
-import { state as baseState } from "../configs/state";
 import { corsHeaders } from "../response";
 import { getTokenFromRequest } from "../token";
+import { Model, ModelsResponse } from "../types/get-models";
+import { state as baseState } from "../types/state";
+
+const MODELS_CACHE_KEY = "modelsCache";
+const defaultModels: Model[] = [];
+
+type ModelsCache = {
+  data: Model[];
+  fetchedAt: string;
+};
+
+export async function fetchModels(token: string): Promise<Model[]> {
+  const requestState = {
+    ...baseState,
+    copilotToken: token,
+    vsCodeVersion: baseState.vsCodeVersion || "1.98.0-insider"
+  };
+  const headersObj = copilotHeaders(requestState);
+  const apiUrl = `${copilotBaseUrl(requestState)}/models`;
+  const init = { method: "GET", headers: headersObj };
+  const apiResp = await fetch(apiUrl, init);
+  if (!apiResp.ok) {
+    return defaultModels;
+  }
+  const json = await apiResp.json() as ModelsResponse;
+  return json.data || defaultModels;
+}
+
+export async function getModelsWithCache(
+  token: string,
+  kv?: KVNamespace
+): Promise<ModelsCache> {
+  if (kv) {
+    const cached = await kv.get(MODELS_CACHE_KEY, "json");
+    if (cached && typeof cached === "object" && "data" in cached && "fetchedAt" in cached) {
+      return cached as ModelsCache;
+    }
+  }
+
+  const data = await fetchModels(token);
+  const cache: ModelsCache = { data, fetchedAt: new Date().toISOString() };
+  if (kv) {
+    await kv.put(MODELS_CACHE_KEY, JSON.stringify(cache));
+  }
+  return cache;
+}
 
 export async function handleModels(
   request: Request,
@@ -16,25 +60,11 @@ export async function handleModels(
     return new Response(null, { status: 405, headers: corsHeaders() });
   }
 
-  let fetchedModels = [] as Array<any>;
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader) {
-    const token = await getTokenFromRequest(request, longTermToken, kv);
-    if (token) {
-      const requestState = {
-        ...baseState,
-        copilotToken: token,
-        vsCodeVersion: baseState.vsCodeVersion || "1.98.0-insider"
-      };
-      const headersObj = copilotHeaders(requestState);
-      const apiUrl = `${copilotBaseUrl(requestState)}/models`;
-      const init = { method: "GET", headers: headersObj };
-      const apiResp = await fetch(apiUrl, init);
-      if (apiResp.ok) {
-        const json = await apiResp.json() as ModelsResponse;
-        fetchedModels = json.data || fetchedModels;
-      }
-    }
+  let fetchedModels = defaultModels;
+  const token = await getTokenFromRequest(request, longTermToken, kv);
+  if (token) {
+    const cache = await getModelsWithCache(token, kv);
+    fetchedModels = cache.data;
   }
 
   const responseJson = { data: fetchedModels, object: "list" };

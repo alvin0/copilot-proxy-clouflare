@@ -1,7 +1,7 @@
 import { copilotBaseUrl, copilotHeaders } from "../configs/api-config";
-import { state as baseState } from "../configs/state";
 import { corsHeaders, sendError } from "../response";
 import { getTokenFromRequest } from "../token";
+import { state as baseState } from "../types/state";
 
 export async function handleChatCompletions(
   request: Request,

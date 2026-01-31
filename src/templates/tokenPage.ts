@@ -1,4 +1,5 @@
-import { QuotaDetail } from "../handlers/usage";
+import { Model } from "../types/get-models";
+import { QuotaDetail } from "../types/get-usage";
 
 type TokenPageState = {
   status?: "saved" | "invalid" | "kv-missing";
@@ -10,7 +11,12 @@ type TokenPageState = {
     quota_reset_date: string;
     copilot_plan: string;
   };
+  models?: {
+    items: Model[];
+    fetchedAt: string;
+  };
   usageError?: string;
+  modelsError?: string;
 };
 
 function renderQuotaCard(title: string, detail: QuotaDetail): string {
@@ -70,6 +76,40 @@ export function renderTokenPage(state: TokenPageState = {}): string {
         No token stored yet. Save a token to load usage data.
       </div>`;
 
+  const modelsSection = state.models
+    ? `<section class="mt-8">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-slate-100">Available Models</h2>
+          <span class="text-xs text-slate-400">Updated ${state.models.fetchedAt}</span>
+        </div>
+        <div class="mt-4 grid gap-3 md:grid-cols-2">
+          ${state.models.items.slice(0, 8).map(model => `
+            <div class="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+              <div class="flex items-center justify-between">
+                <div class="text-sm font-semibold text-slate-100">${model.name}</div>
+                <span class="text-xs text-slate-400">${model.vendor}</span>
+              </div>
+              <div class="mt-2 text-xs text-slate-400">${model.id}</div>
+              <div class="mt-3 flex gap-2 text-[11px]">
+                <span class="rounded-full bg-slate-800 px-2 py-1 text-slate-200">${model.capabilities.family}</span>
+                <span class="rounded-full bg-slate-800 px-2 py-1 text-slate-200">${model.capabilities.type}</span>
+                ${model.preview ? `<span class="rounded-full bg-amber-500/20 px-2 py-1 text-amber-200">Preview</span>` : ""}
+              </div>
+            </div>
+          `).join("")}
+        </div>
+        <p class="mt-3 text-xs text-slate-400">Showing ${Math.min(8, state.models.items.length)} of ${state.models.items.length} models.</p>
+      </section>`
+    : state.modelsError
+    ? `<div class="mt-6 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+        Failed to load models: ${state.modelsError}
+      </div>`
+    : state.hasToken
+    ? `<div class="mt-6 rounded-lg border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
+        Models will appear here once available.
+      </div>`
+    : "";
+
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -112,6 +152,7 @@ export function renderTokenPage(state: TokenPageState = {}): string {
           For security, this page never displays the stored token.
         </p>
         ${usageSection}
+        ${modelsSection}
       </div>
     </div>
   </body>

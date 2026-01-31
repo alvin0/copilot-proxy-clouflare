@@ -1,4 +1,4 @@
-import { State } from "./state"
+import { State } from "../types/state"
 
 export const standardHeaders = () => ({
   "content-type": "application/json",

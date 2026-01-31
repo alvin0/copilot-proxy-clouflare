@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { handleChatCompletions } from "./handlers/chatCompletions";
 import { handleEmbeddings } from "./handlers/embeddings";
-import { handleModels } from "./handlers/models";
+import { getModelsWithCache, handleModels } from "./handlers/models";
 import { getCopilotUsage } from "./handlers/usage";
 import { renderTokenPage } from "./templates/tokenPage";
 import { getStoredLongTermToken } from "./token";
@@ -16,6 +16,8 @@ app.get("/", async c => {
   const status = c.req.query("status") as "saved" | "invalid" | "kv-missing" | undefined;
   let usage;
   let usageError;
+  let models;
+  let modelsError;
   const storedToken = await getStoredLongTermToken(c.env?.TOKEN_KV);
   if (storedToken) {
     try {
@@ -30,12 +32,23 @@ app.get("/", async c => {
     } catch (e) {
       usageError = e instanceof Error ? e.message : String(e);
     }
+    try {
+      const modelsCache = await getModelsWithCache(storedToken, c.env?.TOKEN_KV);
+      models = {
+        items: modelsCache.data,
+        fetchedAt: modelsCache.fetchedAt
+      };
+    } catch (e) {
+      modelsError = e instanceof Error ? e.message : String(e);
+    }
   }
   return c.html(renderTokenPage({
     status,
     hasToken: Boolean(storedToken),
     usage,
-    usageError
+    usageError,
+    models,
+    modelsError
   }));
 });
 

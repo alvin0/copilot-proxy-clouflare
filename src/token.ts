@@ -1,6 +1,6 @@
 import { GITHUB_API_BASE_URL, githubHeaders } from "./configs/api-config";
-import { state as baseState } from "./configs/state";
-import { tokenStore } from "./tokenStore";
+import { tokenStore } from "./types/tokenStore";
+import { state as baseState } from "./types/state";
 
 const inFlightTokenRequests = new Map<string, Promise<string | null>>();
 const KV_PREFIX = "token:";
@@ -96,7 +96,13 @@ async function getValidTempToken(
   const newExpiry = extractTimestamp(newToken);
   tokenStore.set(longTermToken, { tempToken: newToken, expiry: newExpiry });
   if (kv) {
-    await kv.put(getKvKey(longTermToken), JSON.stringify({ tempToken: newToken, expiry: newExpiry }));
+    const now = Math.floor(Date.now() / 1000);
+    const ttlSeconds = Math.max(60, newExpiry - now - 60);
+    await kv.put(
+      getKvKey(longTermToken),
+      JSON.stringify({ tempToken: newToken, expiry: newExpiry }),
+      { expirationTtl: ttlSeconds }
+    );
   }
   return newToken;
 }
