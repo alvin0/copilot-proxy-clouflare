@@ -37,12 +37,7 @@ npx wrangler login
 
 3) Update `wrangler.json` with the returned `id` and `preview_id`.
 
-4) Set the Worker secret:
-```bash
-npx wrangler secret put LONG_TERM_TOKEN
-```
-
-5) Deploy:
+4) Deploy:
 ```bash
 npm run deploy
 ```
@@ -63,15 +58,13 @@ This repo includes `.github/workflows/deploy.yml` to auto-deploy on push to `mai
 Required GitHub secrets:
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
-- `LONG_TERM_TOKEN`
 
 The workflow auto-creates the KV namespace (if missing) and injects the IDs into `wrangler.json` during deploy.
 It expects an Environment named `CLOUDFLARE_API_TOKEN` with those secrets.
 
 ## Authentication
-Requests no longer require an `Authorization` header. The service uses the
-`LONG_TERM_TOKEN` Worker secret (or `.env` for local dev) as the single source
-of truth.
+Requests no longer require an `Authorization` header. The service reads the
+long-term token from KV (set via the `/` page).
 
 ## Endpoints
 

@@ -5,7 +5,6 @@ import { handleModels } from "./handlers/models";
 import { renderTokenPage } from "./templates/tokenPage";
 
 type EnvBindings = {
-  LONG_TERM_TOKEN?: string;
   TOKEN_KV?: KVNamespace;
 };
 
@@ -29,13 +28,13 @@ app.post("/", async c => {
 });
 
 app.all("/v1/chat/completions", c =>
-  handleChatCompletions(c.req.raw, c.env?.LONG_TERM_TOKEN, c.env?.TOKEN_KV)
+  handleChatCompletions(c.req.raw, undefined, c.env?.TOKEN_KV)
 );
 app.all("/v1/embeddings", c =>
-  handleEmbeddings(c.req.raw, c.env?.LONG_TERM_TOKEN, c.env?.TOKEN_KV)
+  handleEmbeddings(c.req.raw, undefined, c.env?.TOKEN_KV)
 );
 app.all("/v1/models", c =>
-  handleModels(c.req.raw, c.env?.LONG_TERM_TOKEN, c.env?.TOKEN_KV)
+  handleModels(c.req.raw, undefined, c.env?.TOKEN_KV)
 );
 
 app.get("*", () => {
