@@ -6,6 +6,7 @@ import { getCopilotUsage } from "./handlers/usage";
 import { renderChatPage } from "./templates/chatPage";
 import { renderTokenPage } from "./templates/tokenPage";
 import { getStoredLongTermToken } from "./token";
+import { withFreeFlag } from "./configs/free-models";
 
 type EnvBindings = {
   TOKEN_KV?: KVNamespace;
@@ -60,7 +61,7 @@ app.get("/chat", async c => {
   }
   try {
     const cache = await getModelsWithCache(storedToken, c.env?.TOKEN_KV);
-    return c.html(renderChatPage(cache.data));
+    return c.html(renderChatPage(withFreeFlag(cache.data)));
   } catch (_) {
     return c.html(renderChatPage([]));
   }

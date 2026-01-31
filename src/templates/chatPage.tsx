@@ -1,15 +1,17 @@
 import React from "react";
 import { renderToString } from "react-dom/server";
-import { Model } from "../types/get-models";
+import { ModelWithFree } from "../configs/free-models";
 
 type ChatPageState = {
-  models: Model[];
+  models: ModelWithFree[];
 };
 
 function ChatPage({ state }: { state: ChatPageState }) {
   const modelOptions = state.models.length > 0
     ? state.models.map(model => (
-      <option key={model.id} value={model.id}>{model.name} ({model.id})</option>
+      <option key={model.id} value={model.id}>
+        {model.name} ({model.id}){model.free ? " - FREE" : ""}
+      </option>
     ))
     : [
       <option key="none" value="" disabled>No models available</option>
@@ -81,11 +83,12 @@ function ChatPage({ state }: { state: ChatPageState }) {
               const streamEl = document.getElementById('stream');
               const tokenUsageEl = document.getElementById('token-usage');
 
-              const state = { messages: [] };
+              const state = { messages: [], isSending: false };
 
-              function appendMessage(role, content) {
+              function createMessageElement(role, content) {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'rounded-xl border border-slate-800 bg-slate-950/40 p-4';
+                wrapper.setAttribute('data-role', role);
                 const title = document.createElement('div');
                 title.className = 'text-xs font-semibold uppercase tracking-wide text-slate-400';
                 title.textContent = role;
@@ -94,14 +97,22 @@ function ChatPage({ state }: { state: ChatPageState }) {
                 body.textContent = content;
                 wrapper.appendChild(title);
                 wrapper.appendChild(body);
+                return { wrapper, body };
+              }
+
+              function appendMessage(role, content) {
+                const { wrapper, body } = createMessageElement(role, content);
                 messagesEl.appendChild(wrapper);
                 messagesEl.scrollTop = messagesEl.scrollHeight;
+                return body;
               }
 
               form.addEventListener('submit', async (e) => {
                 e.preventDefault();
+                if (state.isSending) return;
                 const prompt = promptEl.value.trim();
                 if (!prompt) return;
+                state.isSending = true;
                 const model = modelEl.value;
                 state.messages.push({ role: 'user', content: prompt });
                 appendMessage('user', prompt);
@@ -114,81 +125,75 @@ function ChatPage({ state }: { state: ChatPageState }) {
                 };
 
                 if (!payload.stream) {
+                  try {
+                    const res = await fetch('/v1/chat/completions', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(payload)
+                    });
+                    if (!res.ok) {
+                      appendMessage('error', await res.text());
+                      return;
+                    }
+                    const data = await res.json();
+                    const content = data.choices?.[0]?.message?.content || '';
+                    const usage = data.usage?.total_tokens;
+                    if (typeof usage === 'number') tokenUsageEl.textContent = String(usage);
+                    state.messages.push({ role: 'assistant', content });
+                    appendMessage('assistant', content);
+                  } finally {
+                    state.isSending = false;
+                  }
+                  return;
+                }
+
+                try {
                   const res = await fetch('/v1/chat/completions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                   });
-                  if (!res.ok) {
+                  if (!res.ok || !res.body) {
                     appendMessage('error', await res.text());
                     return;
                   }
-                  const data = await res.json();
-                  const content = data.choices?.[0]?.message?.content || '';
-                  const usage = data.usage?.total_tokens;
-                  if (typeof usage === 'number') tokenUsageEl.textContent = String(usage);
-                  state.messages.push({ role: 'assistant', content });
-                  appendMessage('assistant', content);
-                  return;
-                }
+                  const reader = res.body.getReader();
+                  const decoder = new TextDecoder();
+                  let buffer = '';
+                  let assistantContent = '';
+                  const assistantIndex = state.messages.length;
+                  state.messages.push({ role: 'assistant', content: '' });
+                  const assistantBodyEl = appendMessage('assistant', '');
+                  let usageTokens = null;
 
-                const res = await fetch('/v1/chat/completions', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(payload)
-                });
-                if (!res.ok || !res.body) {
-                  appendMessage('error', await res.text());
-                  return;
-                }
-                const reader = res.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-                let assistantContent = '';
-                const assistantIndex = state.messages.length;
-                state.messages.push({ role: 'assistant', content: '' });
-                let usageTokens = null;
-
-                while (true) {
-                  const { done, value } = await reader.read();
-                  if (done) break;
-                  buffer += decoder.decode(value, { stream: true });
-                  const lines = buffer.split('\\n');
-                  buffer = lines.pop() || '';
-                  for (const line of lines) {
-                    if (!line.startsWith('data: ')) continue;
-                    const data = line.slice(6).trim();
-                    if (data === '[DONE]') continue;
-                    try {
-                      const json = JSON.parse(data);
-                      const delta = json.choices?.[0]?.delta?.content;
-                      if (delta) assistantContent += delta;
-                      if (typeof json.usage?.total_tokens === 'number') {
-                        usageTokens = json.usage.total_tokens;
-                      }
-                    } catch (_) {}
+                  while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\\n');
+                    buffer = lines.pop() || '';
+                    for (const line of lines) {
+                      if (!line.startsWith('data: ')) continue;
+                      const data = line.slice(6).trim();
+                      if (data === '[DONE]') continue;
+                      try {
+                        const json = JSON.parse(data);
+                        const delta = json.choices?.[0]?.delta?.content;
+                        if (delta) assistantContent += delta;
+                        if (typeof json.usage?.total_tokens === 'number') {
+                          usageTokens = json.usage.total_tokens;
+                        }
+                      } catch (_) {}
+                    }
+                    state.messages[assistantIndex].content = assistantContent;
+                    assistantBodyEl.textContent = assistantContent;
+                    messagesEl.scrollTop = messagesEl.scrollHeight;
                   }
-                  state.messages[assistantIndex].content = assistantContent;
-                  const existing = messagesEl.querySelectorAll('[data-role=\"assistant\"]');
-                  if (existing.length === 0) {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'rounded-xl border border-slate-800 bg-slate-950/40 p-4';
-                    wrapper.setAttribute('data-role', 'assistant');
-                    const title = document.createElement('div');
-                    title.className = 'text-xs font-semibold uppercase tracking-wide text-slate-400';
-                    title.textContent = 'assistant';
-                    const body = document.createElement('div');
-                    body.className = 'mt-2 whitespace-pre-wrap text-sm text-slate-100';
-                    body.textContent = assistantContent;
-                    wrapper.appendChild(title);
-                    wrapper.appendChild(body);
-                    messagesEl.appendChild(wrapper);
-                  } else {
-                    existing[existing.length - 1].querySelector('div:last-child').textContent = assistantContent;
+                  if (usageTokens !== null) {
+                    tokenUsageEl.textContent = String(usageTokens);
                   }
-                }
-                if (usageTokens !== null) {
-                  tokenUsageEl.textContent = String(usageTokens);
+                } finally {
+                  state.isSending = false;
                 }
               });
             `
@@ -199,7 +204,7 @@ function ChatPage({ state }: { state: ChatPageState }) {
   );
 }
 
-export function renderChatPage(models: Model[]): string {
+export function renderChatPage(models: ModelWithFree[]): string {
   const markup = renderToString(
     <React.Fragment>
       <ChatPage state={{ models }} />
