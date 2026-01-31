@@ -20,18 +20,32 @@ npm install
 If you use Wrangler, point your entry to `src/index.ts`.
 
 ## Cloudflare Deploy (Wrangler)
-`wrangler.json` is included. Before deploying, set the Worker secret:
+`wrangler.json` is included and points to `src/index.ts`.
+
+1) Login to Cloudflare:
+```bash
+npx wrangler login
+```
+
+2) Create KV namespaces (pick one option):
+- CLI:
+  ```bash
+  npx wrangler kv namespace create TOKEN_KV
+  npx wrangler kv namespace create TOKEN_KV_preview --preview
+  ```
+- Dashboard: Workers & Pages → KV → Create namespace.
+
+3) Update `wrangler.json` with the returned `id` and `preview_id`.
+
+4) Set the Worker secret:
 ```bash
 npx wrangler secret put LONG_TERM_TOKEN
 ```
 
-Create a KV namespace and fill the IDs in `wrangler.json`:
+5) Deploy:
 ```bash
-npx wrangler kv:namespace create TOKEN_KV
-npx wrangler kv:namespace create TOKEN_KV_preview --preview
+npm run deploy
 ```
-
-Then update `wrangler.json` with the returned `id` and `preview_id`.
 
 ## Run (Node.js)
 ```bash
@@ -52,14 +66,12 @@ Required GitHub secrets:
 - `LONG_TERM_TOKEN`
 
 The workflow auto-creates the KV namespace (if missing) and injects the IDs into `wrangler.json` during deploy.
+It expects an Environment named `CLOUDFLARE_API_TOKEN` with those secrets.
 
 ## Authentication
-Send your GitHub token in the `Authorization` header:
-```
-Authorization: Bearer <ghu...|gho...>
-```
-
-If the header is missing, the proxy tries a previously cached long-term token.
+Requests no longer require an `Authorization` header. The service uses the
+`LONG_TERM_TOKEN` Worker secret (or `.env` for local dev) as the single source
+of truth.
 
 ## Endpoints
 
@@ -68,7 +80,6 @@ If the header is missing, the proxy tries a previously cached long-term token.
 
 ```bash
 curl -X POST http://localhost:8787/v1/chat/completions \
-  -H "Authorization: Bearer ghu_..." \
   -H "Content-Type: application/json" \
   -d '{
     "model": "gpt-4o",
@@ -85,7 +96,6 @@ Notes:
 
 ```bash
 curl -X POST http://localhost:8787/v1/embeddings \
-  -H "Authorization: Bearer ghu_..." \
   -H "Content-Type: application/json" \
   -d '{
     "model": "text-embedding-3-small",
@@ -97,8 +107,7 @@ curl -X POST http://localhost:8787/v1/embeddings \
 `GET /v1/models`
 
 ```bash
-curl http://localhost:8787/v1/models \
-  -H "Authorization: Bearer ghu_..."
+curl http://localhost:8787/v1/models
 ```
 
 ## Notes

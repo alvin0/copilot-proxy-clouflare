@@ -30,9 +30,9 @@ export async function handleChatCompletions(
   }
   if (!token) return sendError("Token is invalid.", 401);
 
-  const reqJson = await request.json();
-  const isStream = reqJson.stream || false;
-  const model = reqJson.model || "gpt-4o";
+  const reqJson = await request.json() as Record<string, unknown>;
+  const isStream = Boolean(reqJson.stream);
+  const model = (reqJson.model as string | undefined) || "gpt-4o";
 
   if (model.startsWith("o1") || model.startsWith("o3")) {
     reqJson.stream = false;
@@ -147,7 +147,7 @@ export async function handleChatCompletions(
                         }],
                         created: sseJson.created || Math.floor(Date.now() / 1000),
                         id: sseJson.id || crypto.randomUUID(),
-                        model: sseJson.model || reqJson.model || "gpt-4o",
+                        model: sseJson.model || (reqJson.model as string | undefined) || "gpt-4o",
                         system_fingerprint: sseJson.system_fingerprint || ("fp_" + crypto.randomUUID().replace(/-/g, "").substring(0, 12))
                       };
                       const newLine = "data: " + JSON.stringify(newSseJson) + "\n\n";

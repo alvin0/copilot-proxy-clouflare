@@ -25,8 +25,8 @@ export async function handleModels(
       const init = { method: "GET", headers: headersObj };
       const apiResp = await fetch(apiUrl, init);
       if (apiResp.ok) {
-        const json = await apiResp.json();
-        fetchedModels = json.data;
+        const json = await apiResp.json() as { data?: typeof defaultModels };
+        fetchedModels = json.data || fetchedModels;
       }
     }
   }

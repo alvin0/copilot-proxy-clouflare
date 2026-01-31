@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { handleChatCompletions } from "./handlers/chatCompletions";
 import { handleEmbeddings } from "./handlers/embeddings";
 import { handleModels } from "./handlers/models";
+import { renderTokenPage } from "./templates/tokenPage";
 
 type EnvBindings = {
   LONG_TERM_TOKEN?: string;
@@ -9,6 +10,23 @@ type EnvBindings = {
 };
 
 const app = new Hono<{ Bindings: EnvBindings }>();
+
+app.get("/", c => {
+  return c.html(renderTokenPage());
+});
+
+app.post("/", async c => {
+  if (!c.env?.TOKEN_KV) {
+    return c.text("TOKEN_KV is not configured.", 500);
+  }
+  const form = await c.req.formData();
+  const token = String(form.get("token") || "").trim();
+  if (!token || !(token.startsWith("ghu") || token.startsWith("gho"))) {
+    return c.text("Invalid token format.", 400);
+  }
+  await c.env.TOKEN_KV.put("longTermToken", token);
+  return c.text("Saved.", 200);
+});
 
 app.all("/v1/chat/completions", c =>
   handleChatCompletions(c.req.raw, c.env?.LONG_TERM_TOKEN, c.env?.TOKEN_KV)

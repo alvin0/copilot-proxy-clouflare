@@ -2,6 +2,7 @@ import { tokenStore } from "./tokenStore";
 
 const inFlightTokenRequests = new Map<string, Promise<string | null>>();
 const KV_PREFIX = "token:";
+const LONG_TERM_TOKEN_KEY = "longTermToken";
 
 function getKvKey(longTermToken: string): string {
   return `${KV_PREFIX}${longTermToken}`;
@@ -30,11 +31,11 @@ async function fetchNewToken(longTermToken: string): Promise<string | null> {
   const requestPromise = (async () => {
     const resp = await fetch(url, init);
     if (resp.ok) {
-      const json = await resp.json();
-      if (json.token) {
-        console.log("New Token:\n", json.token);
-        return json.token as string;
-      }
+    const json = await resp.json() as { token?: string };
+    if (json.token) {
+      console.log("New Token:\n", json.token);
+      return json.token;
+    }
       console.error("\"token\" field not found");
     } else {
       const errText = await resp.text();
@@ -102,32 +103,23 @@ async function getValidTempToken(
   return newToken;
 }
 
+async function getStoredLongTermToken(kv?: KVNamespace): Promise<string | null> {
+  if (!kv) return null;
+  const value = await kv.get(LONG_TERM_TOKEN_KEY);
+  return value ? value.trim() : null;
+}
+
 export async function getTokenFromRequest(
   request: Request,
   fallbackLongTermToken?: string,
   kv?: KVNamespace
 ): Promise<string | null> {
-  const authHeader = request.headers.get("Authorization");
-  let longTermToken;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    if (fallbackLongTermToken) {
-      if (!(fallbackLongTermToken.startsWith("ghu") || fallbackLongTermToken.startsWith("gho"))) {
-        return null;
-      }
-      longTermToken = fallbackLongTermToken;
-    } else if (tokenStore.size > 0) {
-      const keys = Array.from(tokenStore.keys());
-      longTermToken = keys[Math.floor(Math.random() * keys.length)];
-      console.log("Using random longTermToken:", longTermToken);
-    } else {
-      return null;
-    }
-  } else {
-    longTermToken = authHeader.substring("Bearer ".length).trim();
-    if (!longTermToken) return null;
-    if (!(longTermToken.startsWith("ghu") || longTermToken.startsWith("gho"))) {
-      return null;
-    }
+  const envToken = fallbackLongTermToken?.trim();
+  const kvToken = envToken ? null : await getStoredLongTermToken(kv);
+  const longTermToken = envToken || kvToken;
+  if (!longTermToken) return null;
+  if (!(longTermToken.startsWith("ghu") || longTermToken.startsWith("gho"))) {
+    return null;
   }
   return await getValidTempToken(longTermToken, kv);
 }
