@@ -75,6 +75,10 @@ function ChatPage({ state }: { state: ChatPageState }) {
                 <span className="hidden sm:inline">Tokens used: <span id="token-usage" className="text-slate-200">N/A</span></span>
               </div>
               <div className="flex flex-wrap items-center gap-3">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-xs text-slate-200 hover:border-slate-500">
+                  <input id="file-input" type="file" className="hidden" />
+                  + File
+                </label>
                 <label className="inline-flex items-center gap-2 text-xs text-slate-300">
                   <input id="stream" type="checkbox" checked className="h-3.5 w-3.5 rounded border-slate-700 bg-slate-950/60" />
                   Stream
@@ -116,9 +120,10 @@ function ChatPage({ state }: { state: ChatPageState }) {
               const modelSupportsEl = document.getElementById('model-supports');
               const attachmentsEl = document.getElementById('attachments');
               const toastEl = document.getElementById('toast');
+              const fileInputEl = document.getElementById('file-input');
               const submitButton = form.querySelector('button[type="submit"]');
 
-              const state = { messages: [], isSending: false, images: [], toastTimer: null };
+              const state = { messages: [], isSending: false, images: [], files: [], toastTimer: null };
 
               function renderMarkdown(content) {
                 if (!window.marked) return content;
@@ -136,6 +141,45 @@ function ChatPage({ state }: { state: ChatPageState }) {
                 }, 2400);
               }
 
+              function buildUserContentPreview(contentParts) {
+                if (!Array.isArray(contentParts)) return null;
+                const wrapper = document.createElement('div');
+                wrapper.className = 'mt-2 space-y-2';
+                const textPart = contentParts.find(part => part.type === 'text' && part.text);
+                if (textPart) {
+                  const textEl = document.createElement('div');
+                  textEl.className = 'whitespace-pre-wrap text-sm text-slate-100';
+                  textEl.textContent = textPart.text;
+                  wrapper.appendChild(textEl);
+                }
+                const images = contentParts.filter(part => part.type === 'image_url');
+                if (images.length > 0) {
+                  const imagesWrap = document.createElement('div');
+                  imagesWrap.className = 'flex flex-wrap gap-2';
+                  for (const image of images) {
+                    const img = document.createElement('img');
+                    img.src = image.image_url?.url || '';
+                    img.alt = 'uploaded-image';
+                    img.className = 'h-16 w-16 rounded-lg border border-slate-800 object-cover';
+                    imagesWrap.appendChild(img);
+                  }
+                  wrapper.appendChild(imagesWrap);
+                }
+                const files = contentParts.filter(part => part.type === 'file');
+                if (files.length > 0) {
+                  const fileWrap = document.createElement('div');
+                  fileWrap.className = 'flex flex-wrap gap-2 text-[11px] text-slate-300';
+                  for (const file of files) {
+                    const chip = document.createElement('span');
+                    chip.className = 'rounded-full border border-slate-800 bg-slate-900/60 px-2 py-1';
+                    chip.textContent = file.file?.filename || 'file';
+                    fileWrap.appendChild(chip);
+                  }
+                  wrapper.appendChild(fileWrap);
+                }
+                return wrapper;
+              }
+
               function createMessageElement(role, content) {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'rounded-xl border border-slate-800 bg-slate-950/40 p-4';
@@ -147,6 +191,9 @@ function ChatPage({ state }: { state: ChatPageState }) {
                 body.className = 'mt-2 whitespace-pre-wrap text-sm text-slate-100 prose prose-invert max-w-none';
                 if (role === 'assistant') {
                   body.innerHTML = renderMarkdown(content);
+                } else if (content && content.parts) {
+                  const preview = buildUserContentPreview(content.parts);
+                  if (preview) body.appendChild(preview);
                 } else {
                   body.textContent = content;
                 }
@@ -180,7 +227,7 @@ function ChatPage({ state }: { state: ChatPageState }) {
               function renderAttachments() {
                 if (!attachmentsEl) return;
                 attachmentsEl.innerHTML = '';
-                if (state.images.length === 0) {
+                if (state.images.length === 0 && state.files.length === 0) {
                   attachmentsEl.classList.add('hidden');
                   return;
                 }
@@ -201,6 +248,23 @@ function ChatPage({ state }: { state: ChatPageState }) {
                     renderAttachments();
                   });
                   wrapper.appendChild(img);
+                  wrapper.appendChild(remove);
+                  attachmentsEl.appendChild(wrapper);
+                }
+                for (const file of state.files) {
+                  const wrapper = document.createElement('div');
+                  wrapper.className = 'flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/60 px-3 py-1 text-[11px] text-slate-200';
+                  const name = document.createElement('span');
+                  name.textContent = file.name;
+                  const remove = document.createElement('button');
+                  remove.type = 'button';
+                  remove.className = 'rounded-full bg-slate-900/80 px-1.5 text-[10px] text-slate-200 hover:bg-slate-800';
+                  remove.textContent = 'x';
+                  remove.addEventListener('click', () => {
+                    state.files = state.files.filter(item => item !== file);
+                    renderAttachments();
+                  });
+                  wrapper.appendChild(name);
                   wrapper.appendChild(remove);
                   attachmentsEl.appendChild(wrapper);
                 }
@@ -227,6 +291,33 @@ function ChatPage({ state }: { state: ChatPageState }) {
                 renderAttachments();
               }
 
+              function arrayBufferToBase64(buffer) {
+                let binary = '';
+                const bytes = new Uint8Array(buffer);
+                for (let i = 0; i < bytes.length; i += 1) {
+                  binary += String.fromCharCode(bytes[i]);
+                }
+                return btoa(binary);
+              }
+
+              async function addFileFromFile(file) {
+                if (!file) return;
+                const maxSizeBytes = 10 * 1024 * 1024;
+                if (file.size > maxSizeBytes) {
+                  appendMessage('error', 'File too large. Max 10MB.');
+                  return;
+                }
+                const buffer = await new Promise((resolve, reject) => {
+                  const reader = new FileReader();
+                  reader.onload = () => resolve(reader.result);
+                  reader.onerror = reject;
+                  reader.readAsArrayBuffer(file);
+                });
+                const base64 = arrayBufferToBase64(buffer);
+                state.files.push({ name: file.name, type: file.type, base64 });
+                renderAttachments();
+              }
+
               function updateModelSupports() {
                 if (!modelSupportsEl) return;
                 const selectedOption = modelEl.options[modelEl.selectedIndex];
@@ -249,13 +340,59 @@ function ChatPage({ state }: { state: ChatPageState }) {
 
               promptEl.addEventListener('paste', (event) => {
                 const items = event.clipboardData?.items || [];
-                const imageItems = Array.from(items).filter(item => item.type.startsWith('image/'));
-                if (imageItems.length === 0) return;
+                const fileItems = Array.from(items).filter(item => item.kind === 'file');
+                if (fileItems.length === 0) return;
                 event.preventDefault();
-                for (const item of imageItems) {
+                for (const item of fileItems) {
                   const file = item.getAsFile();
-                  if (file) addImageFromFile(file);
+                  if (!file) continue;
+                  if (file.type && file.type.startsWith('image/')) {
+                    addImageFromFile(file);
+                  } else {
+                    addFileFromFile(file);
+                  }
                 }
+              });
+
+              if (fileInputEl) {
+                fileInputEl.addEventListener('change', (event) => {
+                  const input = event.target;
+                  const files = input.files ? Array.from(input.files) : [];
+                  for (const file of files) {
+                    if (file.type && file.type.startsWith('image/')) {
+                      addImageFromFile(file);
+                    } else {
+                      addFileFromFile(file);
+                    }
+                  }
+                  input.value = '';
+                });
+              }
+
+              function handleDroppedFiles(fileList) {
+                const files = Array.from(fileList || []);
+                for (const file of files) {
+                  if (file.type && file.type.startsWith('image/')) {
+                    addImageFromFile(file);
+                  } else {
+                    addFileFromFile(file);
+                  }
+                }
+              }
+
+              form.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                form.classList.add('ring-2', 'ring-cyan-400/60');
+              });
+
+              form.addEventListener('dragleave', () => {
+                form.classList.remove('ring-2', 'ring-cyan-400/60');
+              });
+
+              form.addEventListener('drop', (event) => {
+                event.preventDefault();
+                form.classList.remove('ring-2', 'ring-cyan-400/60');
+                handleDroppedFiles(event.dataTransfer?.files);
               });
 
               modelEl.addEventListener('change', updateModelSupports);
@@ -263,24 +400,45 @@ function ChatPage({ state }: { state: ChatPageState }) {
 
               form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                let prompt = promptEl.value.trim();
+                const prompt = promptEl.value.trim();
                 if (state.images.length > 0 && !selectedModelSupportsImages()) {
                   showToast('Selected model does not support images.');
                   return;
                 }
-                if (state.images.length > 0) {
-                  const imageMarkdown = state.images
-                    .map(image => '![](' + image.dataUrl + ')')
-                    .join('\\n');
-                  prompt = prompt ? (prompt + '\\n\\n' + imageMarkdown) : imageMarkdown;
-                }
-                if (state.isSending || !prompt) return;
+                if (state.isSending || (!prompt && state.images.length === 0 && state.files.length === 0)) return;
                 setSending(true);
                 const model = modelEl.value;
-                state.messages.push({ role: 'user', content: prompt });
-                appendMessage('user', prompt);
+                const contentParts = [];
+                if (prompt) {
+                  contentParts.push({ type: 'text', text: prompt });
+                }
+                for (const image of state.images) {
+                  contentParts.push({
+                    type: 'image_url',
+                    image_url: { url: image.dataUrl }
+                  });
+                }
+                for (const file of state.files) {
+                  contentParts.push({
+                    type: 'file',
+                    file: {
+                      filename: file.name,
+                      file_data: file.base64
+                    }
+                  });
+                }
+                const userMessage = {
+                  role: 'user',
+                  content: contentParts.length > 0 ? contentParts : prompt
+                };
+                state.messages.push(userMessage);
+                appendMessage('user', {
+                  text: prompt,
+                  parts: contentParts
+                });
                 promptEl.value = '';
                 state.images = [];
+                state.files = [];
                 renderAttachments();
 
                 const payload = {
