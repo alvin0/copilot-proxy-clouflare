@@ -45,8 +45,8 @@ function ChatPage({ state }: { state: ChatPageState }) {
         <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
       </head>
-      <body className="min-h-screen bg-slate-950 text-slate-100">
-        <div className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 px-6 py-10">
+      <body className="h-screen overflow-hidden bg-slate-950 text-slate-100">
+        <div className="mx-auto flex h-screen min-h-0 max-w-4xl flex-col gap-6 px-6 py-10">
           <header className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">Chat</h1>
