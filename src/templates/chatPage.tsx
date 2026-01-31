@@ -74,7 +74,7 @@ function ChatPage({ state }: { state: ChatPageState }) {
             </div>
           </header>
 
-          <section className="flex max-h-[65vh] flex-1 flex-col rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+          <section className="flex max-h-[75vh] flex-1 flex-col rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
             <div id="messages" className="flex-1 min-h-0 space-y-4 overflow-y-auto pr-2"></div>
             <div id="loading" className="mt-4 hidden items-center gap-2 text-xs text-slate-400">
               <span className="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-400"></span>
