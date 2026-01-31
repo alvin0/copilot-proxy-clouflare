@@ -8,11 +8,28 @@ type ChatPageState = {
 
 function ChatPage({ state }: { state: ChatPageState }) {
   const modelOptions = state.models.length > 0
-    ? state.models.map(model => (
-      <option key={model.id} value={model.id}>
-        {model.name} ({model.id}){model.free ? " - FREE" : ""}
-      </option>
-    ))
+    ? state.models.map(model => {
+      const vision = model.capabilities?.limits?.vision;
+      const supports = vision ? "Images" : "Text only";
+      const supportDetails = [];
+      if (vision?.max_prompt_images) {
+        supportDetails.push(`max ${vision.max_prompt_images.toLocaleString()} images`);
+      }
+      if (vision?.max_prompt_image_size) {
+        supportDetails.push(`max image size ${vision.max_prompt_image_size.toLocaleString()}`);
+      }
+      const supportsDetailText = supportDetails.length > 0 ? supportDetails.join(", ") : "";
+      return (
+        <option
+          key={model.id}
+          value={model.id}
+          data-supports={supports}
+          data-supports-detail={supportsDetailText}
+        >
+          {model.name} ({model.id}){model.free ? " - FREE" : ""}
+        </option>
+      );
+    })
     : [
       <option key="none" value="" disabled>No models available</option>
     ];
@@ -37,8 +54,8 @@ function ChatPage({ state }: { state: ChatPageState }) {
             <a className="text-sm text-cyan-300 hover:text-cyan-200" href="/">Token Setup</a>
           </header>
 
-          <section className="flex-1 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-            <div id="messages" className="max-h-[60vh] space-y-4 overflow-y-auto pr-2"></div>
+          <section className="flex flex-1 flex-col rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+            <div id="messages" className="flex-1 min-h-0 space-y-4 overflow-y-auto pr-2"></div>
             <div id="loading" className="mt-4 hidden items-center gap-2 text-xs text-slate-400">
               <span className="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-400"></span>
               <span>LLM is thinking...</span>
@@ -52,6 +69,7 @@ function ChatPage({ state }: { state: ChatPageState }) {
               placeholder="Type your message..."
               required
             />
+            <div id="attachments" className="mt-3 hidden flex-wrap gap-2"></div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
                 <span className="hidden sm:inline">Tokens used: <span id="token-usage" className="text-slate-200">N/A</span></span>
@@ -75,9 +93,15 @@ function ChatPage({ state }: { state: ChatPageState }) {
                 </button>
               </div>
             </div>
-            <p className="mt-3 text-xs text-slate-500">Messages are sent to /v1/chat/completions</p>
+            <p id="model-supports" className="mt-3 text-xs text-slate-400"></p>
+            <p className="mt-1 text-xs text-slate-500">Messages are sent to /v1/chat/completions</p>
           </form>
         </div>
+
+        <div
+          id="toast"
+          className="pointer-events-none fixed bottom-6 right-6 hidden max-w-sm rounded-xl border border-rose-500/40 bg-rose-500/20 px-4 py-3 text-xs text-rose-100 shadow-lg"
+        ></div>
 
         <script
           dangerouslySetInnerHTML={{
@@ -89,14 +113,27 @@ function ChatPage({ state }: { state: ChatPageState }) {
               const streamEl = document.getElementById('stream');
               const tokenUsageEl = document.getElementById('token-usage');
               const loadingEl = document.getElementById('loading');
+              const modelSupportsEl = document.getElementById('model-supports');
+              const attachmentsEl = document.getElementById('attachments');
+              const toastEl = document.getElementById('toast');
               const submitButton = form.querySelector('button[type="submit"]');
 
-              const state = { messages: [], isSending: false };
+              const state = { messages: [], isSending: false, images: [], toastTimer: null };
 
               function renderMarkdown(content) {
                 if (!window.marked) return content;
                 const html = window.marked.parse(content);
                 return window.DOMPurify ? window.DOMPurify.sanitize(html) : html;
+              }
+
+              function showToast(message) {
+                if (!toastEl) return;
+                toastEl.textContent = message;
+                toastEl.classList.remove('hidden');
+                if (state.toastTimer) clearTimeout(state.toastTimer);
+                state.toastTimer = setTimeout(() => {
+                  toastEl.classList.add('hidden');
+                }, 2400);
               }
 
               function createMessageElement(role, content) {
@@ -135,21 +172,116 @@ function ChatPage({ state }: { state: ChatPageState }) {
                 }
               }
 
+              function selectedModelSupportsImages() {
+                const selectedOption = modelEl.options[modelEl.selectedIndex];
+                return selectedOption?.dataset.supports === 'Images';
+              }
+
+              function renderAttachments() {
+                if (!attachmentsEl) return;
+                attachmentsEl.innerHTML = '';
+                if (state.images.length === 0) {
+                  attachmentsEl.classList.add('hidden');
+                  return;
+                }
+                attachmentsEl.classList.remove('hidden');
+                for (const image of state.images) {
+                  const wrapper = document.createElement('div');
+                  wrapper.className = 'relative overflow-hidden rounded-lg border border-slate-800 bg-slate-950/60';
+                  const img = document.createElement('img');
+                  img.src = image.dataUrl;
+                  img.alt = image.name || 'pasted-image';
+                  img.className = 'h-16 w-16 object-cover';
+                  const remove = document.createElement('button');
+                  remove.type = 'button';
+                  remove.className = 'absolute right-1 top-1 rounded-full bg-slate-900/80 px-1.5 text-[10px] text-slate-200 hover:bg-slate-800';
+                  remove.textContent = 'x';
+                  remove.addEventListener('click', () => {
+                    state.images = state.images.filter(item => item !== image);
+                    renderAttachments();
+                  });
+                  wrapper.appendChild(img);
+                  wrapper.appendChild(remove);
+                  attachmentsEl.appendChild(wrapper);
+                }
+              }
+
+              async function addImageFromFile(file) {
+                if (!file || !file.type || !file.type.startsWith('image/')) return;
+                if (!selectedModelSupportsImages()) {
+                  showToast('Selected model does not support images.');
+                  return;
+                }
+                const maxSizeBytes = 5 * 1024 * 1024;
+                if (file.size > maxSizeBytes) {
+                  appendMessage('error', 'Image too large. Max 5MB.');
+                  return;
+                }
+                const dataUrl = await new Promise((resolve, reject) => {
+                  const reader = new FileReader();
+                  reader.onload = () => resolve(reader.result);
+                  reader.onerror = reject;
+                  reader.readAsDataURL(file);
+                });
+                state.images.push({ dataUrl, name: file.name, type: file.type });
+                renderAttachments();
+              }
+
+              function updateModelSupports() {
+                if (!modelSupportsEl) return;
+                const selectedOption = modelEl.options[modelEl.selectedIndex];
+                if (!selectedOption) return;
+                const supports = selectedOption.dataset.supports || 'Text only';
+                const details = selectedOption.dataset.supportsDetail;
+                modelSupportsEl.textContent = details
+                  ? \`Supports: \${supports} (\${details})\`
+                  : \`Supports: \${supports}\`;
+                if (state.images.length > 0 && supports !== 'Images') {
+                  showToast('Selected model does not support images.');
+                }
+              }
+
               promptEl.addEventListener('keydown', (event) => {
                 if (event.key !== 'Enter' || event.shiftKey) return;
                 event.preventDefault();
                 form.requestSubmit();
               });
 
+              promptEl.addEventListener('paste', (event) => {
+                const items = event.clipboardData?.items || [];
+                const imageItems = Array.from(items).filter(item => item.type.startsWith('image/'));
+                if (imageItems.length === 0) return;
+                event.preventDefault();
+                for (const item of imageItems) {
+                  const file = item.getAsFile();
+                  if (file) addImageFromFile(file);
+                }
+              });
+
+              modelEl.addEventListener('change', updateModelSupports);
+              updateModelSupports();
+
               form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const prompt = promptEl.value.trim();
+                let prompt = promptEl.value.trim();
+                if (state.images.length > 0 && !selectedModelSupportsImages()) {
+                  showToast('Selected model does not support images.');
+                  return;
+                }
+                if (state.images.length > 0) {
+                  const imageMarkdown = state.images
+                    .map(image => '![](' + image.dataUrl + ')')
+                    .join('\\n');
+                  prompt = prompt ? (prompt + '\\n\\n' + imageMarkdown) : imageMarkdown;
+                }
                 if (state.isSending || !prompt) return;
                 setSending(true);
                 const model = modelEl.value;
                 state.messages.push({ role: 'user', content: prompt });
                 appendMessage('user', prompt);
                 promptEl.value = '';
+                state.images = [];
+                renderAttachments();
 
                 const payload = {
                   model: model || undefined,
