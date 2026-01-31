@@ -19,6 +19,11 @@ function ChatPage({ state }: { state: ChatPageState }) {
       if (vision?.max_prompt_image_size) {
         supportDetails.push(`max image size ${vision.max_prompt_image_size.toLocaleString()}`);
       }
+      const contextWindow = model.capabilities?.limits?.max_context_window_tokens;
+      const supportedMediaTypes = vision?.supported_media_types || [];
+      if (supportedMediaTypes.length > 0) {
+        supportDetails.push(`types ${supportedMediaTypes.join(", ")}`);
+      }
       const supportsDetailText = supportDetails.length > 0 ? supportDetails.join(", ") : "";
       return (
         <option
@@ -26,6 +31,8 @@ function ChatPage({ state }: { state: ChatPageState }) {
           value={model.id}
           data-supports={supports}
           data-supports-detail={supportsDetailText}
+          data-media-types={supportedMediaTypes.join(",")}
+          data-context-window={contextWindow ? String(contextWindow) : ""}
         >
           {model.name} ({model.id}){model.free ? " - FREE" : ""}
         </option>
@@ -73,7 +80,7 @@ function ChatPage({ state }: { state: ChatPageState }) {
             <div id="attachments" className="mt-3 hidden flex-wrap gap-2"></div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
-                <span className="hidden sm:inline">Tokens used: <span id="token-usage" className="text-slate-200">N/A</span></span>
+                <span className="hidden sm:inline">Context window: <span id="context-window" className="text-slate-200">N/A</span></span>
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-xs text-slate-200 hover:border-slate-500">

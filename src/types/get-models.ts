@@ -11,6 +11,7 @@ interface ModelLimits {
   vision?: {
     max_prompt_images?: number
     max_prompt_image_size?: number
+    supported_media_types?: string[]
   }
 }
 

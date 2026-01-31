@@ -4,7 +4,7 @@ export const chatPageScript = `
   const messagesEl = document.getElementById('messages');
   const modelEl = document.getElementById('model');
   const streamEl = document.getElementById('stream');
-  const tokenUsageEl = document.getElementById('token-usage');
+  const contextWindowEl = document.getElementById('context-window');
   const loadingEl = document.getElementById('loading');
   const modelSupportsEl = document.getElementById('model-supports');
   const attachmentsEl = document.getElementById('attachments');
@@ -113,6 +113,13 @@ export const chatPageScript = `
     return selectedOption?.dataset.supports === 'Images';
   }
 
+  function getSupportedMediaTypes() {
+    const selectedOption = modelEl.options[modelEl.selectedIndex];
+    const raw = selectedOption?.dataset.mediaTypes || '';
+    if (!raw) return [];
+    return raw.split(',').map(item => item.trim()).filter(Boolean);
+  }
+
   function renderAttachments() {
     if (!attachmentsEl) return;
     attachmentsEl.innerHTML = '';
@@ -163,6 +170,11 @@ export const chatPageScript = `
     if (!file || !file.type || !file.type.startsWith('image/')) return;
     if (!selectedModelSupportsImages()) {
       showToast('Selected model does not support images.');
+      return;
+    }
+    const supportedTypes = getSupportedMediaTypes();
+    if (supportedTypes.length > 0 && !supportedTypes.includes(file.type)) {
+      showToast('Image type not supported by selected model.');
       return;
     }
     const maxSizeBytes = 5 * 1024 * 1024;
@@ -218,6 +230,15 @@ export const chatPageScript = `
       : \`Supports: \${supports}\`;
     if (state.images.length > 0 && supports !== 'Images') {
       showToast('Selected model does not support images.');
+    }
+    const supportedTypes = getSupportedMediaTypes();
+    if (state.images.length > 0 && supportedTypes.length > 0) {
+      const invalid = state.images.find(image => !supportedTypes.includes(image.type));
+      if (invalid) showToast('Some images are not supported by selected model.');
+    }
+    if (contextWindowEl) {
+      const contextValue = selectedOption.dataset.contextWindow;
+      contextWindowEl.textContent = contextValue ? contextValue : 'N/A';
     }
   }
 
@@ -349,8 +370,7 @@ export const chatPageScript = `
         }
         const data = await res.json();
         const content = data.choices?.[0]?.message?.content || '';
-        const usage = data.usage?.total_tokens;
-        if (typeof usage === 'number') tokenUsageEl.textContent = String(usage);
+        // context window is shown via model selection, no usage display
         state.messages.push({ role: 'assistant', content });
         appendMessage('assistant', content);
       } finally {
@@ -393,17 +413,17 @@ export const chatPageScript = `
             const json = JSON.parse(data);
             const delta = json.choices?.[0]?.delta?.content;
             if (delta) assistantContent += delta;
-            if (typeof json.usage?.total_tokens === 'number') {
-              usageTokens = json.usage.total_tokens;
-            }
+            // ignore usage in stream; context window is displayed instead
           } catch (_) {}
         }
         state.messages[assistantIndex].content = assistantContent;
         assistantBodyEl.innerHTML = renderMarkdown(assistantContent);
         messagesEl.scrollTop = messagesEl.scrollHeight;
       }
-      if (usageTokens !== null) {
-        tokenUsageEl.textContent = String(usageTokens);
+      if (contextWindowEl) {
+        const selectedOption = modelEl.options[modelEl.selectedIndex];
+        const contextValue = selectedOption?.dataset.contextWindow;
+        contextWindowEl.textContent = contextValue ? contextValue : 'N/A';
       }
     } finally {
       setSending(false);
