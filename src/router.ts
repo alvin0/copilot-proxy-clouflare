@@ -3,6 +3,7 @@ import { handleChatCompletions } from "./handlers/chatCompletions";
 import { handleEmbeddings } from "./handlers/embeddings";
 import { getModelsWithCache, handleModels } from "./handlers/models";
 import { getCopilotUsage } from "./handlers/usage";
+import { renderChatPage } from "./templates/chatPage";
 import { renderTokenPage } from "./templates/tokenPage";
 import { getStoredLongTermToken } from "./token";
 
@@ -50,6 +51,19 @@ app.get("/", async c => {
     models,
     modelsError
   }));
+});
+
+app.get("/chat", async c => {
+  const storedToken = await getStoredLongTermToken(c.env?.TOKEN_KV);
+  if (!storedToken) {
+    return c.html(renderChatPage([]));
+  }
+  try {
+    const cache = await getModelsWithCache(storedToken, c.env?.TOKEN_KV);
+    return c.html(renderChatPage(cache.data));
+  } catch (_) {
+    return c.html(renderChatPage([]));
+  }
 });
 
 app.post("/", async c => {

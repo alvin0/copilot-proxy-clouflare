@@ -2,6 +2,7 @@ import { copilotBaseUrl, copilotHeaders } from "../configs/api-config";
 import { corsHeaders } from "../response";
 import { getTokenFromRequest } from "../token";
 import { Model, ModelsResponse } from "../types/get-models";
+import { withFreeFlag } from "../configs/free-models";
 import { state as baseState } from "../types/state";
 
 const MODELS_CACHE_KEY = "modelsCache";
@@ -67,7 +68,7 @@ export async function handleModels(
     fetchedModels = cache.data;
   }
 
-  const responseJson = { data: fetchedModels, object: "list" };
+  const responseJson = { data: withFreeFlag(fetchedModels), object: "list" };
   return new Response(JSON.stringify(responseJson), {
     status: 200,
     headers: { ...corsHeaders(), "Content-Type": "application/json" }
