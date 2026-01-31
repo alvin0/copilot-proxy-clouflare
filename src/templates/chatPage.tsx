@@ -37,6 +37,10 @@ function ChatPage({ state }: { state: ChatPageState }) {
 
           <section className="flex-1 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
             <div id="messages" className="space-y-4"></div>
+            <div id="loading" className="mt-4 hidden items-center gap-2 text-xs text-slate-400">
+              <span className="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-slate-700 border-t-cyan-400"></span>
+              <span>LLM is thinking...</span>
+            </div>
           </section>
 
           <form id="chat-form" className="rounded-[28px] border border-slate-800 bg-slate-900/70 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
@@ -82,6 +86,8 @@ function ChatPage({ state }: { state: ChatPageState }) {
               const modelEl = document.getElementById('model');
               const streamEl = document.getElementById('stream');
               const tokenUsageEl = document.getElementById('token-usage');
+              const loadingEl = document.getElementById('loading');
+              const submitButton = form.querySelector('button[type="submit"]');
 
               const state = { messages: [], isSending: false };
 
@@ -107,12 +113,27 @@ function ChatPage({ state }: { state: ChatPageState }) {
                 return body;
               }
 
+              function setSending(isSending) {
+                state.isSending = isSending;
+                if (submitButton) submitButton.disabled = isSending;
+                promptEl.disabled = isSending;
+                if (loadingEl) {
+                  loadingEl.classList.toggle('hidden', !isSending);
+                  loadingEl.classList.toggle('flex', isSending);
+                }
+              }
+
+              promptEl.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' || event.shiftKey) return;
+                event.preventDefault();
+                form.requestSubmit();
+              });
+
               form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                if (state.isSending) return;
                 const prompt = promptEl.value.trim();
-                if (!prompt) return;
-                state.isSending = true;
+                if (state.isSending || !prompt) return;
+                setSending(true);
                 const model = modelEl.value;
                 state.messages.push({ role: 'user', content: prompt });
                 appendMessage('user', prompt);
@@ -142,7 +163,7 @@ function ChatPage({ state }: { state: ChatPageState }) {
                     state.messages.push({ role: 'assistant', content });
                     appendMessage('assistant', content);
                   } finally {
-                    state.isSending = false;
+                    setSending(false);
                   }
                   return;
                 }
@@ -164,6 +185,7 @@ function ChatPage({ state }: { state: ChatPageState }) {
                   const assistantIndex = state.messages.length;
                   state.messages.push({ role: 'assistant', content: '' });
                   const assistantBodyEl = appendMessage('assistant', '');
+                  if (loadingEl) loadingEl.classList.add('hidden');
                   let usageTokens = null;
 
                   while (true) {
@@ -193,7 +215,7 @@ function ChatPage({ state }: { state: ChatPageState }) {
                     tokenUsageEl.textContent = String(usageTokens);
                   }
                 } finally {
-                  state.isSending = false;
+                  setSending(false);
                 }
               });
             `

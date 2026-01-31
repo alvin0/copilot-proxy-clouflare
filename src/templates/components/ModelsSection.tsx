@@ -24,6 +24,12 @@ export function ModelsSection({ models, modelsError, hasToken }: ModelsSectionPr
               {models.items.map(model => {
                 const contextWindow = model.capabilities?.limits?.max_context_window_tokens;
                 const contextLabel = contextWindow ? `${contextWindow.toLocaleString()} ctx` : "Context N/A";
+                const vision = model.capabilities?.limits?.vision;
+                const mediaLabels = [];
+                if (vision && (vision.max_prompt_images || vision.max_prompt_image_size)) {
+                  mediaLabels.push("Images");
+                }
+                const mediaLabel = mediaLabels.length > 0 ? mediaLabels.join(", ") : "None";
                 return (
                   <div key={model.id} className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
                     <div className="flex items-center justify-between">
@@ -40,6 +46,9 @@ export function ModelsSection({ models, modelsError, hasToken }: ModelsSectionPr
                       </span>
                       <span className="rounded-full bg-cyan-500/20 px-2 py-1 text-cyan-200">
                         {contextLabel}
+                      </span>
+                      <span className="rounded-full bg-slate-800 px-2 py-1 text-slate-200">
+                        Media: {mediaLabel}
                       </span>
                       {model.preview ? (
                         <span className="rounded-full bg-amber-500/20 px-2 py-1 text-amber-200">Preview</span>
