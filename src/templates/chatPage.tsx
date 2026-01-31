@@ -8,8 +8,9 @@ type ChatPageState = {
 };
 
 function ChatPage({ state }: { state: ChatPageState }) {
-  const modelOptions = state.models.length > 0
-    ? state.models.map(model => {
+  const selectableModels = state.models.filter(model => model.model_picker_enabled);
+  const modelOptions = selectableModels.length > 0
+    ? selectableModels.map(model => {
       const vision = model.capabilities?.limits?.vision;
       const supports = vision ? "Images" : "Text only";
       const supportDetails = [];
@@ -21,6 +22,7 @@ function ChatPage({ state }: { state: ChatPageState }) {
       }
       const contextWindow = model.capabilities?.limits?.max_context_window_tokens;
       const supportedMediaTypes = vision?.supported_media_types || [];
+      const maxPromptImages = vision?.max_prompt_images;
       if (supportedMediaTypes.length > 0) {
         supportDetails.push(`types ${supportedMediaTypes.join(", ")}`);
       }
@@ -32,6 +34,7 @@ function ChatPage({ state }: { state: ChatPageState }) {
           data-supports={supports}
           data-supports-detail={supportsDetailText}
           data-media-types={supportedMediaTypes.join(",")}
+          data-max-images={typeof maxPromptImages === "number" ? String(maxPromptImages) : ""}
           data-context-window={contextWindow ? String(contextWindow) : ""}
         >
           {model.name} ({model.id}){model.free ? " - FREE" : ""}

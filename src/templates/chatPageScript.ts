@@ -120,6 +120,14 @@ export const chatPageScript = `
     return raw.split(',').map(item => item.trim()).filter(Boolean);
   }
 
+  function getMaxPromptImages() {
+    const selectedOption = modelEl.options[modelEl.selectedIndex];
+    const raw = selectedOption?.dataset.maxImages || '';
+    if (!raw) return null;
+    const value = Number(raw);
+    return Number.isFinite(value) ? value : null;
+  }
+
   function renderAttachments() {
     if (!attachmentsEl) return;
     attachmentsEl.innerHTML = '';
@@ -177,6 +185,11 @@ export const chatPageScript = `
       showToast('Image type not supported by selected model.');
       return;
     }
+    const maxImages = getMaxPromptImages();
+    if (typeof maxImages === 'number' && state.images.length >= maxImages) {
+      showToast('Selected model supports fewer images. Extra image removed.');
+      return;
+    }
     const maxSizeBytes = 5 * 1024 * 1024;
     if (file.size > maxSizeBytes) {
       appendMessage('error', 'Image too large. Max 5MB.');
@@ -203,6 +216,11 @@ export const chatPageScript = `
 
   async function addFileFromFile(file) {
     if (!file) return;
+    const supportedTypes = getSupportedMediaTypes();
+    if (supportedTypes.length > 0 && (!file.type || !supportedTypes.includes(file.type))) {
+      showToast('File type not supported by selected model.');
+      return;
+    }
     const maxSizeBytes = 10 * 1024 * 1024;
     if (file.size > maxSizeBytes) {
       appendMessage('error', 'File too large. Max 10MB.');
@@ -233,9 +251,25 @@ export const chatPageScript = `
     }
     const supportedTypes = getSupportedMediaTypes();
     if (state.images.length > 0 && supportedTypes.length > 0) {
-      const invalid = state.images.find(image => !supportedTypes.includes(image.type));
-      if (invalid) showToast('Some images are not supported by selected model.');
+      const before = state.images.length;
+      state.images = state.images.filter(image => supportedTypes.includes(image.type));
+      if (state.images.length !== before) {
+        showToast('Some images were removed (unsupported type).');
+      }
     }
+    if (state.files.length > 0 && supportedTypes.length > 0) {
+      const before = state.files.length;
+      state.files = state.files.filter(file => file.type && supportedTypes.includes(file.type));
+      if (state.files.length !== before) {
+        showToast('Some files were removed (unsupported type).');
+      }
+    }
+    const maxImages = getMaxPromptImages();
+    if (typeof maxImages === 'number' && state.images.length > maxImages) {
+      state.images = state.images.slice(0, maxImages);
+      showToast('Too many images. Extra images were removed.');
+    }
+    renderAttachments();
     if (contextWindowEl) {
       const contextValue = selectedOption.dataset.contextWindow;
       contextWindowEl.textContent = contextValue ? contextValue : 'N/A';
@@ -313,6 +347,30 @@ export const chatPageScript = `
     const prompt = promptEl.value.trim();
     if (state.images.length > 0 && !selectedModelSupportsImages()) {
       showToast('Selected model does not support images.');
+      return;
+    }
+    const supportedTypes = getSupportedMediaTypes();
+    if (supportedTypes.length > 0) {
+      const invalidImage = state.images.find(image => !supportedTypes.includes(image.type));
+      if (invalidImage) {
+        state.images = state.images.filter(image => supportedTypes.includes(image.type));
+        renderAttachments();
+        showToast('Some images were removed (unsupported type).');
+        return;
+      }
+      const invalidFile = state.files.find(file => !file.type || !supportedTypes.includes(file.type));
+      if (invalidFile) {
+        state.files = state.files.filter(file => file.type && supportedTypes.includes(file.type));
+        renderAttachments();
+        showToast('Some files were removed (unsupported type).');
+        return;
+      }
+    }
+    const maxImages = getMaxPromptImages();
+    if (typeof maxImages === 'number' && state.images.length > maxImages) {
+      state.images = state.images.slice(0, maxImages);
+      renderAttachments();
+      showToast('Too many images. Extra images were removed.');
       return;
     }
     if (state.isSending || (!prompt && state.images.length === 0 && state.files.length === 0)) return;

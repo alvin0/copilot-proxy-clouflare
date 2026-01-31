@@ -5,7 +5,8 @@ export type ModelWithFree = Model & { free: boolean };
 export const FREE_ID_MODELS = [
   "gpt-5-mini",
   "gpt-4o-2024-11-20",
-  "grok-code-fast-1"
+  "grok-code-fast-1",
+  "oswe-vscode-prime"
 ];
 
 const FREE_ID_MODEL_SET = new Set(FREE_ID_MODELS);
