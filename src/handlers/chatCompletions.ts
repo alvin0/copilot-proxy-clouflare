@@ -1,4 +1,5 @@
-import { getCompletionsHeaders } from "../headers";
+import { copilotBaseUrl, copilotHeaders } from "../configs/api-config";
+import { state as baseState } from "../configs/state";
 import { corsHeaders, sendError } from "../response";
 import { getTokenFromRequest } from "../token";
 
@@ -40,8 +41,13 @@ export async function handleChatCompletions(
     reqJson.stream = isStream;
   }
 
-  const headersObj = getCompletionsHeaders(token);
-  const apiUrl = "https://api.individual.githubcopilot.com/chat/completions";
+  const requestState = {
+    ...baseState,
+    copilotToken: token,
+    vsCodeVersion: baseState.vsCodeVersion || "1.98.0-insider"
+  };
+  const headersObj = copilotHeaders(requestState);
+  const apiUrl = `${copilotBaseUrl(requestState)}/chat/completions`;
   const init = {
     method: "POST",
     headers: headersObj,

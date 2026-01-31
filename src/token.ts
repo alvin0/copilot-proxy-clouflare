@@ -1,3 +1,5 @@
+import { GITHUB_API_BASE_URL, githubHeaders } from "./configs/api-config";
+import { state as baseState } from "./configs/state";
 import { tokenStore } from "./tokenStore";
 
 const inFlightTokenRequests = new Map<string, Promise<string | null>>();
@@ -9,19 +11,15 @@ function getKvKey(longTermToken: string): string {
 }
 
 async function fetchNewToken(longTermToken: string): Promise<string | null> {
-  const url = "https://api.github.com/copilot_internal/v2/token";
+  const url = `${GITHUB_API_BASE_URL}/copilot_internal/v2/token`;
+  const requestState = {
+    ...baseState,
+    githubToken: longTermToken,
+    vsCodeVersion: baseState.vsCodeVersion || "1.98.0-insider"
+  };
   const init = {
     method: "GET",
-    headers: {
-      "Authorization": "token " + longTermToken,
-      "Editor-Plugin-Version": "copilot-chat/0.23.2",
-      "Editor-Version": "vscode/1.98.0-insider",
-      "User-Agent": "GitHubCopilotChat/0.23.2",
-      "x-github-api-version": "2024-12-15",
-      "Sec-Fetch-Site": "none",
-      "Sec-Fetch-Mode": "no-cors",
-      "Sec-Fetch-Dest": "empty"
-    }
+    headers: githubHeaders(requestState)
   };
   const existing = inFlightTokenRequests.get(longTermToken);
   if (existing) {

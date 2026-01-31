@@ -1,4 +1,5 @@
-import { getEmbeddingsHeaders } from "../headers";
+import { copilotBaseUrl, copilotHeaders } from "../configs/api-config";
+import { state as baseState } from "../configs/state";
 import { corsHeaders, sendError } from "../response";
 import { getTokenFromRequest } from "../token";
 
@@ -27,8 +28,13 @@ export async function handleEmbeddings(
   console.log("Received Embedding Request JSON:");
   console.log(JSON.stringify(reqJson, null, 4));
 
-  const headersObj = getEmbeddingsHeaders(token);
-  const apiUrl = "https://api.individual.githubcopilot.com/embeddings";
+  const requestState = {
+    ...baseState,
+    copilotToken: token,
+    vsCodeVersion: baseState.vsCodeVersion || "1.98.0-insider"
+  };
+  const headersObj = copilotHeaders(requestState);
+  const apiUrl = `${copilotBaseUrl(requestState)}/embeddings`;
   const init = {
     method: "POST",
     headers: headersObj,

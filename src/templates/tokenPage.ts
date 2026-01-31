@@ -1,4 +1,23 @@
-export function renderTokenPage(): string {
+type TokenPageState = {
+  status?: "saved" | "invalid" | "kv-missing";
+};
+
+export function renderTokenPage(state: TokenPageState = {}): string {
+  const banner =
+    state.status === "saved"
+      ? `<div class="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+          Token saved to KV successfully.
+        </div>`
+      : state.status === "invalid"
+      ? `<div class="mb-4 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          Invalid token format. Please enter a ghu/gho token.
+        </div>`
+      : state.status === "kv-missing"
+      ? `<div class="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+          KV binding is missing. Configure TOKEN_KV first.
+        </div>`
+      : "";
+
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -16,6 +35,7 @@ export function renderTokenPage(): string {
             Enter a GitHub long-term token (ghu/gho). The value is stored in KV and will overwrite any previous value.
           </p>
         </div>
+        ${banner}
         <form method="post" action="/" class="space-y-4">
           <div>
             <label for="token" class="block text-sm font-medium text-slate-200">Long-Term Token</label>

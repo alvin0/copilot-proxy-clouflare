@@ -11,20 +11,21 @@ type EnvBindings = {
 const app = new Hono<{ Bindings: EnvBindings }>();
 
 app.get("/", c => {
-  return c.html(renderTokenPage());
+  const status = c.req.query("status") as "saved" | "invalid" | "kv-missing" | undefined;
+  return c.html(renderTokenPage({ status }));
 });
 
 app.post("/", async c => {
   if (!c.env?.TOKEN_KV) {
-    return c.text("TOKEN_KV is not configured.", 500);
+    return c.html(renderTokenPage({ status: "kv-missing" }), 500);
   }
   const form = await c.req.formData();
   const token = String(form.get("token") || "").trim();
   if (!token || !(token.startsWith("ghu") || token.startsWith("gho"))) {
-    return c.text("Invalid token format.", 400);
+    return c.html(renderTokenPage({ status: "invalid" }), 400);
   }
   await c.env.TOKEN_KV.put("longTermToken", token);
-  return c.text("Saved.", 200);
+  return c.redirect("/?status=saved", 303);
 });
 
 app.all("/v1/chat/completions", c =>

@@ -1,5 +1,6 @@
-import { getModelHeaders } from "../headers";
-import { defaultModels } from "../models";
+import { copilotBaseUrl, copilotHeaders } from "../configs/api-config";
+import { ModelsResponse } from "../configs/get-models";
+import { state as baseState } from "../configs/state";
 import { corsHeaders } from "../response";
 import { getTokenFromRequest } from "../token";
 
@@ -15,17 +16,22 @@ export async function handleModels(
     return new Response(null, { status: 405, headers: corsHeaders() });
   }
 
-  let fetchedModels = defaultModels;
+  let fetchedModels = [] as Array<any>;
   const authHeader = request.headers.get("Authorization");
   if (authHeader) {
     const token = await getTokenFromRequest(request, longTermToken, kv);
     if (token) {
-      const headersObj = getModelHeaders(token);
-      const apiUrl = "https://api.individual.githubcopilot.com/models";
+      const requestState = {
+        ...baseState,
+        copilotToken: token,
+        vsCodeVersion: baseState.vsCodeVersion || "1.98.0-insider"
+      };
+      const headersObj = copilotHeaders(requestState);
+      const apiUrl = `${copilotBaseUrl(requestState)}/models`;
       const init = { method: "GET", headers: headersObj };
       const apiResp = await fetch(apiUrl, init);
       if (apiResp.ok) {
-        const json = await apiResp.json() as { data?: typeof defaultModels };
+        const json = await apiResp.json() as ModelsResponse;
         fetchedModels = json.data || fetchedModels;
       }
     }
