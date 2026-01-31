@@ -10,6 +10,10 @@ export const chatPageScript = `
   const attachmentsEl = document.getElementById('attachments');
   const toastEl = document.getElementById('toast');
   const fileInputEl = document.getElementById('file-input');
+  const clearChatEl = document.getElementById('clear-chat');
+  const clearModalEl = document.getElementById('clear-modal');
+  const cancelClearEl = document.getElementById('cancel-clear');
+  const confirmClearEl = document.getElementById('confirm-clear');
   const submitButton = form.querySelector('button[type="submit"]');
 
   const state = { messages: [], isSending: false, images: [], files: [], toastTimer: null };
@@ -310,6 +314,46 @@ export const chatPageScript = `
         }
       }
       input.value = '';
+    });
+  }
+
+  function closeClearModal() {
+    if (clearModalEl) clearModalEl.classList.add('hidden');
+  }
+
+  function openClearModal() {
+    if (clearModalEl) clearModalEl.classList.remove('hidden');
+  }
+
+  if (clearChatEl) {
+    clearChatEl.addEventListener('click', () => {
+      openClearModal();
+    });
+  }
+
+  if (cancelClearEl) {
+    cancelClearEl.addEventListener('click', () => {
+      closeClearModal();
+    });
+  }
+
+  if (confirmClearEl) {
+    confirmClearEl.addEventListener('click', () => {
+      state.messages = [];
+      state.images = [];
+      state.files = [];
+      if (messagesEl) messagesEl.innerHTML = '';
+      renderAttachments();
+      if (loadingEl) loadingEl.classList.add('hidden');
+      closeClearModal();
+    });
+  }
+
+  if (clearModalEl) {
+    clearModalEl.addEventListener('click', (event) => {
+      if (event.target === clearModalEl) {
+        closeClearModal();
+      }
     });
   }
 

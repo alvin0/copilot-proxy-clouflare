@@ -62,7 +62,16 @@ function ChatPage({ state }: { state: ChatPageState }) {
               <h1 className="text-2xl font-semibold tracking-tight">Chat</h1>
               <p className="mt-1 text-sm text-slate-400">Chat with the current Copilot models.</p>
             </div>
-            <a className="text-sm text-cyan-300 hover:text-cyan-200" href="/">Token Setup</a>
+            <div className="flex items-center gap-3">
+              <button
+                id="clear-chat"
+                type="button"
+                className="rounded-full border border-slate-800 px-3 py-1 text-xs text-slate-300 transition hover:border-slate-600 hover:text-slate-100"
+              >
+                Clear
+              </button>
+              <a className="text-sm text-cyan-300 hover:text-cyan-200" href="/">Token Setup</a>
+            </div>
           </header>
 
           <section className="flex flex-1 flex-col rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
@@ -73,7 +82,7 @@ function ChatPage({ state }: { state: ChatPageState }) {
             </div>
           </section>
 
-          <form id="chat-form" className="rounded-[28px] border border-slate-800 bg-slate-900/70 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+          <form id="chat-form" className="rounded-[28px] border border-slate-800 bg-slate-900/70 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
             <textarea
               id="prompt"
               className="h-16 w-full resize-none bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
@@ -86,10 +95,10 @@ function ChatPage({ state }: { state: ChatPageState }) {
                 <span className="hidden sm:inline">Context window: <span id="context-window" className="text-slate-200">N/A</span></span>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-xs text-slate-200 hover:border-slate-500">
+                {/* <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-xs text-slate-200 hover:border-slate-500">
                   <input id="file-input" type="file" className="hidden" />
                   + File
-                </label>
+                </label> */}
                 <label className="inline-flex items-center gap-2 text-xs text-slate-300">
                   <input id="stream" type="checkbox" checked className="h-3.5 w-3.5 rounded border-slate-700 bg-slate-950/60" />
                   Stream
@@ -109,7 +118,6 @@ function ChatPage({ state }: { state: ChatPageState }) {
               </div>
             </div>
             <p id="model-supports" className="mt-3 text-xs text-slate-400"></p>
-            <p className="mt-1 text-xs text-slate-500">Messages are sent to /v1/chat/completions</p>
           </form>
         </div>
 
@@ -117,6 +125,32 @@ function ChatPage({ state }: { state: ChatPageState }) {
           id="toast"
           className="pointer-events-none fixed bottom-6 right-6 hidden max-w-sm rounded-xl border border-rose-500/40 bg-rose-500/20 px-4 py-3 text-xs text-rose-100 shadow-lg"
         ></div>
+
+        <div
+          id="clear-modal"
+          className="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 px-6"
+        >
+          <div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
+            <h3 className="text-sm font-semibold text-slate-100">Clear conversation?</h3>
+            <p className="mt-2 text-xs text-slate-400">This will remove all messages in the chat window.</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                id="cancel-clear"
+                type="button"
+                className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:border-slate-600 hover:text-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                id="confirm-clear"
+                type="button"
+                className="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-slate-950 hover:bg-rose-400"
+              >
+                Clear all
+              </button>
+            </div>
+          </div>
+        </div>
 
         <script dangerouslySetInnerHTML={{ __html: chatPageScript }} />
       </body>
