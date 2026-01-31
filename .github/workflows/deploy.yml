@@ -1,0 +1,100 @@
+name: Deploy Worker
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    environment: CLOUDFLARE_API_TOKEN
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+      - name: Ensure KV namespace
+        run: |
+          node - <<'NODE'
+          const fs = require("node:fs");
+          const path = require("node:path");
+
+          async function main() {
+            const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+            const token = process.env.CLOUDFLARE_API_TOKEN;
+
+            if (!accountId || !token) {
+              console.error("Missing CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN.");
+              process.exit(1);
+            }
+
+            async function cfFetch(pathname, init) {
+              const res = await fetch(`https://api.cloudflare.com/client/v4${pathname}`, {
+                ...init,
+                headers: {
+                  "Authorization": `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                  ...(init && init.headers ? init.headers : {})
+                }
+              });
+              const data = await res.json();
+              if (!res.ok || data.success === false) {
+                console.error("Cloudflare API error:", data);
+                process.exit(1);
+              }
+              return data;
+            }
+
+            const binding = "TOKEN_KV";
+            const listData = await cfFetch(`/accounts/${accountId}/storage/kv/namespaces`, {});
+            const list = listData.result || [];
+
+            let prod = list.find(n => n.title === binding);
+            if (!prod) {
+              const created = await cfFetch(`/accounts/${accountId}/storage/kv/namespaces`, {
+                method: "POST",
+                body: JSON.stringify({ title: binding })
+              });
+              prod = created.result;
+            }
+
+            let preview = list.find(n => n.title === `${binding}_preview`);
+            if (!preview) {
+              const created = await cfFetch(`/accounts/${accountId}/storage/kv/namespaces`, {
+                method: "POST",
+                body: JSON.stringify({ title: `${binding}_preview` })
+              });
+              preview = created.result;
+            }
+
+            const wranglerPath = path.join(process.cwd(), "wrangler.json");
+            const wrangler = JSON.parse(fs.readFileSync(wranglerPath, "utf8"));
+            wrangler.kv_namespaces = [{
+              binding,
+              id: prod.id,
+              preview_id: preview.id
+            }];
+            fs.writeFileSync(wranglerPath, JSON.stringify(wrangler, null, 2));
+          }
+
+          main().catch(err => {
+            console.error(err);
+            process.exit(1);
+          });
+          NODE
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Set Worker secret
+        run: printf "%s" "$LONG_TERM_TOKEN" | npx wrangler@4 secret put LONG_TERM_TOKEN
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          LONG_TERM_TOKEN: ${{ secrets.LONG_TERM_TOKEN }}
+      - name: Deploy to Cloudflare Workers (auto-create if missing)
+        run: npx wrangler@4 deploy --name copilot-proxy-clouflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
