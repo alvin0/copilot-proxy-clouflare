@@ -82,23 +82,32 @@ export function renderTokenPage(state: TokenPageState = {}): string {
           <h2 class="text-lg font-semibold text-slate-100">Available Models</h2>
           <span class="text-xs text-slate-400">Updated ${state.models.fetchedAt}</span>
         </div>
-        <div class="mt-4 grid gap-3 md:grid-cols-2">
-          ${state.models.items.slice(0, 8).map(model => `
-            <div class="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-              <div class="flex items-center justify-between">
-                <div class="text-sm font-semibold text-slate-100">${model.name}</div>
-                <span class="text-xs text-slate-400">${model.vendor}</span>
-              </div>
-              <div class="mt-2 text-xs text-slate-400">${model.id}</div>
-              <div class="mt-3 flex gap-2 text-[11px]">
-                <span class="rounded-full bg-slate-800 px-2 py-1 text-slate-200">${model.capabilities.family}</span>
-                <span class="rounded-full bg-slate-800 px-2 py-1 text-slate-200">${model.capabilities.type}</span>
-                ${model.preview ? `<span class="rounded-full bg-amber-500/20 px-2 py-1 text-amber-200">Preview</span>` : ""}
-              </div>
-            </div>
-          `).join("")}
+        <div class="mt-4 max-h-[420px] overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+          <div class="grid gap-3 md:grid-cols-2">
+            ${state.models.items.map(model => {
+              const contextWindow = model.capabilities?.limits?.max_context_window_tokens;
+              const contextLabel = contextWindow
+                ? `${contextWindow.toLocaleString()} ctx`
+                : "Context N/A";
+              return `
+                <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+                  <div class="flex items-center justify-between">
+                    <div class="text-sm font-semibold text-slate-100">${model.name}</div>
+                    <span class="text-xs text-slate-400">${model.vendor}</span>
+                  </div>
+                  <div class="mt-2 text-xs text-slate-400">${model.id}</div>
+                  <div class="mt-3 flex flex-wrap gap-2 text-[11px]">
+                    <span class="rounded-full bg-slate-800 px-2 py-1 text-slate-200">${model.capabilities.family}</span>
+                    <span class="rounded-full bg-slate-800 px-2 py-1 text-slate-200">${model.capabilities.type}</span>
+                    <span class="rounded-full bg-cyan-500/20 px-2 py-1 text-cyan-200">${contextLabel}</span>
+                    ${model.preview ? `<span class="rounded-full bg-amber-500/20 px-2 py-1 text-amber-200">Preview</span>` : ""}
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
         </div>
-        <p class="mt-3 text-xs text-slate-400">Showing ${Math.min(8, state.models.items.length)} of ${state.models.items.length} models.</p>
+        <p class="mt-3 text-xs text-slate-400">Showing ${state.models.items.length} models.</p>
       </section>`
     : state.modelsError
     ? `<div class="mt-6 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
