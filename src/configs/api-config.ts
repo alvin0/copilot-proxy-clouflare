@@ -1,4 +1,3 @@
-import { randomUUID } from "crypto"
 import { State } from "./state"
 
 export const standardHeaders = () => ({
@@ -26,7 +25,7 @@ export const copilotHeaders = (state: State, vision: boolean = false) => {
     "user-agent": USER_AGENT,
     "openai-intent": "conversation-panel",
     "x-github-api-version": API_VERSION,
-    "x-request-id": randomUUID(),
+    "x-request-id": crypto.randomUUID(),
     "x-vscode-user-agent-library-version": "electron-fetch",
   }
 
