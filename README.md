@@ -1,33 +1,76 @@
 # copilot-proxy-clouflare
 
-A Cloudflare Workers (Hono) proxy that exposes “OpenAI/Anthropic-like” endpoints backed by GitHub Copilot as the upstream.
+A Cloudflare Workers (Hono) proxy that exposes “OpenAI/Anthropic-like” endpoints backed by GitHub Copilot.
 
-Main goals:
-- Use the Worker URL as an “OpenAI base URL” for tools/apps (OpenAI-compatible).
+Goals:
+- Use the Worker URL as an “OpenAI base URL” for tools/apps.
 - Automatically refresh short‑lived Copilot tokens from a GitHub long‑term token.
+- Support multiple users via `username + password`.
 
-## Features
-- Token setup UI at `GET /` (includes GitHub Device Flow to obtain a token)
-- Quick chat UI at `GET /chat` (streaming + image/file attachments using OpenAI message content parts)
+## Key features
+- Token setup UI at `GET /` (includes GitHub Device Flow).
+- Chat UI at `GET /chat` (streaming + image/file attachments via OpenAI content parts).
 - OpenAI-compatible:
-  - `POST /v1/chat/completions` (streaming SSE)
-  - `POST /v1/responses` (streaming SSE)
-  - `POST /v1/embeddings`
-  - `GET /v1/models` (fetches models from Copilot when a token is available; otherwise returns an empty list)
-- Anthropic-compatible (shim on top of `/v1/responses`):
-  - `POST /v1/messages` (streaming SSE supported)
-- Supports selecting the upstream domain via `x-copilot-account-type` (for Copilot Enterprise)
+  - `POST /:username/v1/chat/completions` (SSE streaming)
+  - `POST /:username/v1/responses` (SSE streaming)
+  - `POST /:username/v1/embeddings`
+  - `GET /:username/v1/models` (cached + `free` flag)
+- Anthropic-compatible (shim over `/v1/responses`):
+  - `POST /:username/v1/messages` (SSE streaming)
+- Supports selecting upstream domain via `x-copilot-account-type` (Copilot Enterprise).
 
-## Architecture & storage
-- KV binding: `TOKEN_KV`
-  - Key `longTermToken`: stores the GitHub long‑term token (prefix `ghu`/`gho`)
-  - Key `token:<longTermToken>`: caches the short‑lived Copilot token (with TTL)
-  - Key `modelsCache:<accountType>`: caches the models list
-- Note: the current deployment supports **one long‑term token** (it overwrites the previous one when you save a new token via `/`).
+## Quick flow
+1) Run locally or deploy to Cloudflare.
+2) Open `GET /` to create **username + password** and save a GitHub token (`ghu...` / `gho...`).
+3) Call API as `/{username}/v1/...` with:
+   - `Authorization: Bearer <password>`
+
+## Use With Tools (OpenAI Base URL)
+Most OpenAI-compatible tools only need:
+- Base URL: `https://<your-worker-domain>/<username>/v1`
+- API key: `<password>` (the UI-generated `acpc-...` password)
+
+Examples:
+
+OpenAI JS/TS SDK:
+```js
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY, // set this to your acpc-... password
+  baseURL: "https://<your-worker-domain>/<username>/v1"
+});
+```
+
+OpenAI Python SDK:
+```py
+import os
+from openai import OpenAI
+
+client = OpenAI(
+  api_key=os.environ["OPENAI_API_KEY"],  # set this to your acpc-... password
+  base_url="https://<your-worker-domain>/<username>/v1",
+)
+```
+
+Notes:
+- The password is used as a Bearer token (`Authorization: Bearer <password>`). Many tools label it as “API key”.
+- For Anthropic SDKs, set the base URL to `https://<your-worker-domain>/<username>` so requests go to `.../<username>/v1/messages`.
+
+## Username/password rules
+- `username`: lowercase letters, numbers, `-` (regex: `^[a-z0-9]+(?:-[a-z0-9]+)*$`).
+- `password`: format `acpc-XXXXXXXXXX` (10 alphanumeric chars).
+- The UI includes **Generate** to create a valid password.
+
+## Storage (KV)
+Binding: `TOKEN_KV`
+- Stores user credentials + tokens per `username`.
+- Caches short-lived tokens (TTL) by credential.
+- Caches model list by account type.
 
 ## Requirements
-- Node.js (for dev tooling)
-- Cloudflare account + Wrangler (to run/deploy Workers)
+- Node.js (dev tooling)
+- Cloudflare account + Wrangler (run/deploy)
 
 ## Install
 ```bash
@@ -37,9 +80,7 @@ npm ci
 ## Run locally
 
 ### 1) Wrangler (recommended)
-Wrangler uses the Workers runtime and bindings (the KV binding works directly).
-
-1) Create the KV namespace (one time):
+1) Create the KV namespace (one-time):
 ```bash
 npx wrangler kv namespace create TOKEN_KV
 ```
@@ -55,15 +96,15 @@ Open:
 - `http://localhost:8787/` to set the token
 - `http://localhost:8787/chat` to chat
 
-### 2) Node (convenient for debugging)
-`npm run dev` runs a Hono Node server and can **optionally** read/write Cloudflare KV via the REST API.
+### 2) Node (handy for debugging)
+`npm run dev` runs a Hono Node server and can read/write Cloudflare KV via the REST API.
 
 1) Copy env:
 ```bash
 cp .env.example .env
 ```
 
-2) Fill these (required if you want the API to work):
+2) Fill required values:
 - `CF_API_TOKEN`, `CF_ACCOUNT_ID`, `CF_KV_NAMESPACE_ID`
 
 3) Run:
@@ -72,13 +113,13 @@ npm run dev
 ```
 
 Notes:
-- If you don’t set the required `CF_*`, the server still runs but:
+- If `CF_*` is missing, the server still runs but:
   - `POST /` returns `kv-missing`
-  - `/v1/*` endpoints return `401` because the proxy can’t refresh tokens.
-- `LONG_TERM_TOKEN` in `.env.example` is currently **not used** (the proxy reads the token from KV).
+  - API returns `401` because KV is unavailable
+- `LONG_TERM_TOKEN` in `.env.example` is currently not used for `/:username/v1/*` routes.
 
 ## Deploy to Cloudflare (Wrangler)
-`wrangler.json` points the entry to `src/index.ts`.
+`wrangler.json` points to `src/index.ts`.
 
 ```bash
 npx wrangler login
@@ -86,7 +127,7 @@ npm run deploy
 ```
 
 After deploy, visit:
-- `https://<your-worker-domain>/` to save the long‑term token
+- `https://<your-worker-domain>/` to create user + save token
 - `https://<your-worker-domain>/chat` to chat
 
 ## CI/CD (GitHub Actions)
@@ -96,33 +137,36 @@ Required secrets:
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 
-The workflow sets `environment: CLOUDFLARE_API_TOKEN` (if you use GitHub Environments to scope secrets, create an Environment with that exact name; or rename it in the workflow).
+The workflow uses `environment: CLOUDFLARE_API_TOKEN` (if you use GitHub Environments).
 
 ## Auth & security
-- Requests do **not** require an `Authorization` header. The proxy reads the long‑term token from KV, exchanges it for a short‑lived Copilot token, and calls upstream.
-- CORS is enabled with `Access-Control-Allow-Origin: *` for `GET, POST, OPTIONS`.
-- Recommendation: deploy privately or add an extra protection layer (Access policy / auth gateway), because anyone who can access the Worker can consume Copilot quota for the stored token.
+- **All API calls require** `Authorization: Bearer <password>`.
+- All API endpoints are under `/:username/v1/*`.
+- CORS enabled with `Access-Control-Allow-Origin: *` for `GET, POST, OPTIONS`.
+- Recommendation: deploy privately or add an extra protection layer (Access policy / auth gateway) to avoid leaking Copilot quota.
 
 ## Supported headers
-- `x-copilot-account-type`: when set (e.g. `enterprise-name`), upstream becomes `https://api.<enterprise-name>.githubcopilot.com` instead of `https://api.githubcopilot.com`.
-  - This header is constrained to `[a-z0-9-]` to avoid turning this into an open proxy for arbitrary domains.
+- `x-copilot-account-type`: e.g. `enterprise-name`
+  - Upstream becomes `https://api.<enterprise-name>.githubcopilot.com`.
+  - Header is constrained to `[a-z0-9-]` to avoid an open proxy.
 
 ## Endpoints
 
 ### UI
-- `GET /`: token setup page (form expects `ghu...`/`gho...`) + GitHub Device Flow
-- `POST /`: saves the token into KV (key `longTermToken`)
-- `GET /chat`: chat UI (uses `/v1/chat/completions`)
+- `GET /`: token setup form + GitHub Device Flow
+- `POST /`: save `username + password + token`
+- `GET /chat`: chat UI
 
 ### OpenAI-compatible
 
 #### Chat Completions
-`POST /v1/chat/completions`
+`POST /:username/v1/chat/completions`
 
 Example (stream):
 ```bash
-curl -N http://localhost:8787/v1/chat/completions \
+curl -N http://localhost:8787/<username>/v1/chat/completions \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <password>" \
   -d '{
     "model": "gpt-4o",
     "stream": true,
@@ -133,16 +177,16 @@ curl -N http://localhost:8787/v1/chat/completions \
 ```
 
 Notes:
-- For `o1*`/`o3*` models, upstream is forced to `stream=false`. The proxy wraps the non-stream result into a single SSE event (so clients can still read it as a stream).
-- `messages[].content` can be a string or an array of OpenAI-style “content parts” (e.g. `[{ "type":"text","text":"..." }, { "type":"image_url","image_url":{ "url":"data:image/png;base64,..." } }]`). The `/chat` UI uses this format.
+- `o1*`/`o3*` models are forced to `stream=false` and wrapped into a single SSE event.
+- `messages[].content` can be a string or OpenAI “content parts”.
 
 #### Responses
-`POST /v1/responses`
+`POST /:username/v1/responses`
 
-Example (non-stream):
 ```bash
-curl http://localhost:8787/v1/responses \
+curl http://localhost:8787/<username>/v1/responses \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <password>" \
   -d '{
     "model": "gpt-4o",
     "input": [
@@ -151,15 +195,13 @@ curl http://localhost:8787/v1/responses \
   }'
 ```
 
-Notes:
-- For `o1*`/`o3*`, the proxy forces `stream=false` (aligned with the rest of this repo’s logic).
-
 #### Embeddings
-`POST /v1/embeddings`
+`POST /:username/v1/embeddings`
 
 ```bash
-curl http://localhost:8787/v1/embeddings \
+curl http://localhost:8787/<username>/v1/embeddings \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <password>" \
   -d '{
     "model": "text-embedding-3-small",
     "input": "hello world"
@@ -167,29 +209,30 @@ curl http://localhost:8787/v1/embeddings \
 ```
 
 Notes:
-- If `input` is a string, the proxy normalizes it to a 1-element array.
+- If `input` is a string, it is normalized to a one-item array.
 - If `model` has the `github_copilot/` prefix, the proxy strips it before calling upstream.
 
 #### Models
-`GET /v1/models`
+`GET /:username/v1/models`
 
 ```bash
-curl http://localhost:8787/v1/models
+curl http://localhost:8787/<username>/v1/models \
+  -H "Authorization: Bearer <password>"
 ```
 
 Notes:
-- With token: fetches `/models` from Copilot and adds `free` (if it matches the internal “free models” list).
+- With token: fetches `/models` from Copilot and adds `free` if it matches the internal list.
 - Without token: returns `{ data: [], object: "list" }`.
 
 ### Anthropic-compatible
 
 #### Messages
-`POST /v1/messages`
+`POST /:username/v1/messages`
 
-Example (non-stream):
 ```bash
-curl http://localhost:8787/v1/messages \
+curl http://localhost:8787/<username>/v1/messages \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <password>" \
   -d '{
     "model": "gpt-4o",
     "max_tokens": 256,
@@ -200,22 +243,22 @@ curl http://localhost:8787/v1/messages \
 ```
 
 Notes:
-- The proxy maps Anthropic Messages requests to OpenAI Responses and maps responses back.
-- For `o1*`/`o3*`, the proxy forces `stream=false`.
+- The proxy maps Anthropic Messages to OpenAI Responses and maps them back.
+- `o1*`/`o3*` always use `stream=false`.
 
-### GitHub Device Flow helpers (for the `/` UI)
-- `POST /github/get-device-code` (or `GET`): returns `device_code`, `user_code`, `verification_uri`
-- `POST /github/poll-device-code`: body `{ "device_code": "..." }` to poll; returns:
-  - `200` when `access_token` is available (UI auto-saves the token into KV)
-  - `202` for `authorization_pending`
-  - `429` for `slow_down`
-  - `403` for `access_denied`
-  - `410` for `expired_token`
+### GitHub Device Flow helpers (for `/` UI)
+- `POST /github/get-device-code` (or `GET`)
+- `POST /github/poll-device-code` body `{ "device_code": "..." }`
+  - `200`: `access_token` available
+  - `202`: `authorization_pending`
+  - `429`: `slow_down`
+  - `403`: `access_denied`
+  - `410`: `expired_token`
 
 ## Quick troubleshooting
-- `401 Token is invalid.`: token wasn’t saved to KV yet (open `/` to set it) or KV/`CF_*` isn’t configured.
-- `kv-missing` on `/`: you’re running Node dev without `CF_API_TOKEN`/`CF_ACCOUNT_ID`/`CF_KV_NAMESPACE_ID`, or the Worker is missing the `TOKEN_KV` binding in `wrangler.json`.
-- Models not showing in `/chat`: no token yet or upstream `/models` fetch failed; check the Usage/Models panels on `/`.
+- `401 Token is invalid.`: token not saved in KV or KV/`CF_*` not configured.
+- `kv-missing` at `/`: running Node dev without `CF_API_TOKEN`/`CF_ACCOUNT_ID`/`CF_KV_NAMESPACE_ID`.
+- Models not showing in `/chat`: token missing or `/models` fetch failed.
 
 ## Notes
 - This repo uses `wrangler.json` (not `wrangler.toml`).
