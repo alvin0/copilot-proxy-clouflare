@@ -6,6 +6,7 @@ import { ModelsSection } from "./components/ModelsSection";
 import { StatusBanner } from "./components/StatusBanner";
 import { TokenForm } from "./components/TokenForm";
 import { UsageSection } from "./components/UsageSection";
+import { tokenPageScript } from "./tokenPageScript";
 
 type TokenPageState = {
   status?: "saved" | "invalid" | "kv-missing";
@@ -50,6 +51,7 @@ function TokenPage({ state }: { state: TokenPageState }) {
             <ModelsSection models={state.models} modelsError={state.modelsError} hasToken={state.hasToken} />
           </div>
         </div>
+        <script dangerouslySetInnerHTML={{ __html: tokenPageScript }} />
       </body>
     </html>
   );

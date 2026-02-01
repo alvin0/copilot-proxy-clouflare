@@ -5,6 +5,7 @@ import { getModelsWithCache, handleModels } from "./handlers/models";
 import { handleMessages } from "./handlers/messages";
 import { handleResponses } from "./handlers/responses";
 import { getCopilotUsage } from "./handlers/usage";
+import { handleGetDeviceCode, handlePollDeviceCode } from "./handlers/getDeviceCode";
 import { renderChatPage } from "./templates/chatPage";
 import { renderTokenPage } from "./templates/tokenPage";
 import { getStoredLongTermToken } from "./token";
@@ -97,6 +98,9 @@ app.all("/v1/embeddings", c =>
 app.all("/v1/models", c =>
   handleModels(c.req.raw, undefined, c.env?.TOKEN_KV)
 );
+
+app.all("/github/get-device-code", c => handleGetDeviceCode(c.req.raw));
+app.all("/github/poll-device-code", c => handlePollDeviceCode(c.req.raw));
 
 app.get("*", () => {
   const html = `<html><head><title>Welcome to API</title></head>
