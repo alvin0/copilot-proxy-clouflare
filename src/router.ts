@@ -60,16 +60,19 @@ app.get("/", async c => {
     | undefined;
   const username = c.req.query("username")?.trim() || "";
   const password = c.req.query("password")?.trim() || "";
+  const debug = c.req.query("debug")?.trim() === "1";
   let usage;
   let usageError;
   let models;
   let modelsError;
+  let usageDebug: unknown;
   const storedToken = username ? await getUserLongTermToken(username, c.env?.TOKEN_KV) : null;
   const storedPassword = username ? await getUserPassword(username, c.env?.TOKEN_KV) : null;
   const canReadUsage = Boolean(storedToken && storedPassword && password && storedPassword === password);
   if (storedToken && canReadUsage) {
     try {
       const usageResponse = await getCopilotUsage(storedToken);
+      if (debug) usageDebug = usageResponse;
       const snapshots = usageResponse.quota_snapshots;
       if (!snapshots?.chat || !snapshots?.completions || !snapshots?.premium_interactions) {
         usageError = "Usage data not available for this account.";
@@ -101,6 +104,7 @@ app.get("/", async c => {
     hasToken: Boolean(storedToken),
     username: username || undefined,
     password: password || undefined,
+    usageDebug: debug ? usageDebug : undefined,
     usage,
     usageError,
     models,

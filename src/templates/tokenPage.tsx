@@ -13,6 +13,7 @@ type TokenPageState = {
   hasToken?: boolean;
   username?: string;
   password?: string;
+  usageDebug?: unknown;
   usage?: {
     chat: QuotaDetail;
     completions: QuotaDetail;
@@ -106,6 +107,14 @@ function TokenPage({ state }: { state: TokenPageState }) {
             {(state.password && state.username) ? (
               <React.Fragment>
                 <UsageSection usage={state.usage} usageError={state.usageError} hasToken={state.hasToken} />
+                {state.usageDebug ? (
+                  <details className="mt-4 rounded-lg border border-slate-800 bg-slate-950/40 p-4 text-xs text-slate-300">
+                    <summary className="cursor-pointer text-xs text-slate-400">Debug: raw usage response</summary>
+                    <pre className="mt-3 whitespace-pre-wrap text-[11px] text-slate-200">
+                      {JSON.stringify(state.usageDebug, null, 2)}
+                    </pre>
+                  </details>
+                ) : null}
                 <ModelsSection models={state.models} modelsError={state.modelsError} hasToken={state.hasToken} />
               </React.Fragment>
             ) : (
