@@ -1,11 +1,13 @@
-import { copilotBaseUrl, copilotHeaders } from "../configs/api-config";
+import { copilotBaseUrl, copilotHeaders, resolveCopilotAccountType } from "../configs/api-config";
 import { ModelWithFree, withFreeFlag } from "../configs/free-models";
 import { corsHeaders } from "../response";
 import { getTokenFromRequest } from "../token";
 import { Model, ModelsResponse } from "../types/get-models";
 import { state as baseState } from "../types/state";
 
-const MODELS_CACHE_KEY = "modelsCache";
+function getModelsCacheKey(accountType: string): string {
+  return `modelsCache:${accountType || "individual"}`;
+}
 const defaultModels: Model[] = [];
 
 type ModelsCache = {
@@ -13,9 +15,13 @@ type ModelsCache = {
   fetchedAt: string;
 };
 
-export async function fetchModels(token: string): Promise<Model[]> {
+export async function fetchModels(
+  token: string,
+  accountType: string = baseState.accountType
+): Promise<Model[]> {
   const requestState = {
     ...baseState,
+    accountType,
     copilotToken: token,
     vsCodeVersion: baseState.vsCodeVersion || "1.109.0-insider"
   };
@@ -32,19 +38,20 @@ export async function fetchModels(token: string): Promise<Model[]> {
 
 export async function getModelsWithCache(
   token: string,
-  kv?: KVNamespace
+  kv?: KVNamespace,
+  accountType: string = baseState.accountType
 ): Promise<ModelsCache> {
   if (kv) {
-    const cached = await kv.get(MODELS_CACHE_KEY, "json");
+    const cached = await kv.get(getModelsCacheKey(accountType), "json");
     if (cached && typeof cached === "object" && "data" in cached && "fetchedAt" in cached) {
       return cached as ModelsCache;
     }
   }
 
-  const data = await fetchModels(token);
+  const data = await fetchModels(token, accountType);
   const cache: ModelsCache = { data, fetchedAt: new Date().toISOString() };
   if (kv) {
-    await kv.put(MODELS_CACHE_KEY, JSON.stringify(cache));
+    await kv.put(getModelsCacheKey(accountType), JSON.stringify(cache));
   }
   return cache;
 }
@@ -64,7 +71,8 @@ export async function handleModels(
   let fetchedModels = defaultModels;
   const token = await getTokenFromRequest(request, longTermToken, kv);
   if (token) {
-    const cache = await getModelsWithCache(token, kv);
+    const accountType = resolveCopilotAccountType(request, baseState.accountType);
+    const cache = await getModelsWithCache(token, kv, accountType);
     fetchedModels = cache.data;
   }
 

@@ -15,6 +15,15 @@ export const copilotBaseUrl = (state: State) =>
   state.accountType === "individual" ?
     "https://api.githubcopilot.com"
   : `https://api.${state.accountType}.githubcopilot.com`
+
+export const resolveCopilotAccountType = (request: Request, fallback: string): string => {
+  const raw = request.headers.get("x-copilot-account-type");
+  const value = raw ? raw.trim() : "";
+  if (!value) return fallback;
+  // Keep this constrained to a single DNS label to avoid turning this into an open proxy.
+  if (!/^[a-z0-9-]+$/i.test(value)) return fallback;
+  return value;
+};
 export const copilotHeaders = (state: State, vision: boolean = false) => {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${state.copilotToken}`,

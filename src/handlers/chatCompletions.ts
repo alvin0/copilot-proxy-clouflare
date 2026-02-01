@@ -1,4 +1,4 @@
-import { copilotBaseUrl, copilotHeaders } from "../configs/api-config";
+import { copilotBaseUrl, copilotHeaders, resolveCopilotAccountType } from "../configs/api-config";
 import { corsHeaders, sendError } from "../response";
 import { getTokenFromRequest } from "../token";
 import { state as baseState } from "../types/state";
@@ -43,6 +43,7 @@ export async function handleChatCompletions(
 
   const requestState = {
     ...baseState,
+    accountType: resolveCopilotAccountType(request, baseState.accountType),
     copilotToken: token,
     vsCodeVersion: baseState.vsCodeVersion || "1.109.0-insider"
   };

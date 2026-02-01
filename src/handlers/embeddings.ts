@@ -1,7 +1,13 @@
-import { copilotBaseUrl, copilotHeaders } from "../configs/api-config";
+import { copilotBaseUrl, copilotHeaders, resolveCopilotAccountType } from "../configs/api-config";
 import { corsHeaders, sendError } from "../response";
 import { getTokenFromRequest } from "../token";
 import { state as baseState } from "../types/state";
+
+type JsonObject = Record<string, unknown>;
+
+function isJsonObject(value: unknown): value is JsonObject {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
 
 export async function handleEmbeddings(
   request: Request,
@@ -24,16 +30,44 @@ export async function handleEmbeddings(
   }
   if (!token) return sendError("Token is invalid.", 401);
 
-  const reqJson = await request.json();
+  const rawReq = await request.json() as unknown;
+  if (!isJsonObject(rawReq)) {
+    return sendError("Embeddings request must be a JSON object.", 400);
+  }
+
+  const model = typeof rawReq.model === "string" ? rawReq.model.trim() : "";
+  if (!model) {
+    return sendError("Embeddings request requires `model` (string).", 400);
+  }
+
+  let normalizedModel = model;
+  if (normalizedModel.startsWith("github_copilot/")) {
+    normalizedModel = normalizedModel.replace("github_copilot/", "");
+  }
+
+  const input = rawReq.input;
+  let normalizedInput: unknown;
+  if (typeof input === "string") {
+    normalizedInput = [input];
+  } else if (Array.isArray(input)) {
+    normalizedInput = input;
+  } else {
+    return sendError("Embeddings request requires `input` (string or array).", 400);
+  }
+
+  const reqJson: JsonObject = { ...rawReq, model: normalizedModel, input: normalizedInput };
+  delete reqJson.stream;
+
   console.log("Received Embedding Request JSON:");
   console.log(JSON.stringify(reqJson, null, 4));
 
   const requestState = {
     ...baseState,
+    accountType: resolveCopilotAccountType(request, baseState.accountType),
     copilotToken: token,
     vsCodeVersion: baseState.vsCodeVersion || "1.109.0-insider"
   };
-  const headersObj = copilotHeaders(requestState, true);
+  const headersObj = copilotHeaders(requestState);
   const apiUrl = `${copilotBaseUrl(requestState)}/embeddings`;
   const init = {
     method: "POST",
@@ -52,8 +86,11 @@ export async function handleEmbeddings(
 
   if (apiResp.ok) {
     return new Response(responseBody, {
-      status: 200,
-      headers: { ...corsHeaders(), "Content-Type": "application/json; charset=utf-8" }
+      status: apiResp.status,
+      headers: {
+        ...corsHeaders(),
+        "Content-Type": apiResp.headers.get("content-type") || "application/json; charset=utf-8"
+      }
     });
   }
 
