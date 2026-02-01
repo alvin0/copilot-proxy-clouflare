@@ -1,8 +1,8 @@
 import { copilotBaseUrl, copilotHeaders } from "../configs/api-config";
+import { ModelWithFree, withFreeFlag } from "../configs/free-models";
 import { corsHeaders } from "../response";
 import { getTokenFromRequest } from "../token";
 import { Model, ModelsResponse } from "../types/get-models";
-import { ModelWithFree, withFreeFlag } from "../configs/free-models";
 import { state as baseState } from "../types/state";
 
 const MODELS_CACHE_KEY = "modelsCache";
@@ -17,7 +17,7 @@ export async function fetchModels(token: string): Promise<Model[]> {
   const requestState = {
     ...baseState,
     copilotToken: token,
-    vsCodeVersion: baseState.vsCodeVersion || "1.98.0-insider"
+    vsCodeVersion: baseState.vsCodeVersion || "1.109.0-insider"
   };
   const headersObj = copilotHeaders(requestState);
   const apiUrl = `${copilotBaseUrl(requestState)}/models`;

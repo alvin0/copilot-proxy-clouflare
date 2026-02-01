@@ -3,7 +3,7 @@ import { GITHUB_API_BASE_URL, githubHeaders } from "../configs/api-config";
 import { CopilotUsageResponse } from "../types/get-usage";
 import { state as baseState } from "../types/state";
 
-const DEFAULT_VSCODE_VERSION = "1.98.0-insider";
+const DEFAULT_VSCODE_VERSION = "1.109.0-insider";
 
 export const getCopilotUsage = async (
   githubToken: string,

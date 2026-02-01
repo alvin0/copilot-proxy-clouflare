@@ -31,7 +31,7 @@ export async function handleEmbeddings(
   const requestState = {
     ...baseState,
     copilotToken: token,
-    vsCodeVersion: baseState.vsCodeVersion || "1.98.0-insider"
+    vsCodeVersion: baseState.vsCodeVersion || "1.109.0-insider"
   };
   const headersObj = copilotHeaders(requestState, true);
   const apiUrl = `${copilotBaseUrl(requestState)}/embeddings`;

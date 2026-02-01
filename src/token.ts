@@ -1,6 +1,6 @@
 import { GITHUB_API_BASE_URL, githubHeaders } from "./configs/api-config";
-import { tokenStore } from "./types/tokenStore";
 import { state as baseState } from "./types/state";
+import { tokenStore } from "./types/tokenStore";
 
 const inFlightTokenRequests = new Map<string, Promise<string | null>>();
 const KV_PREFIX = "token:";
@@ -15,7 +15,7 @@ async function fetchNewToken(longTermToken: string): Promise<string | null> {
   const requestState = {
     ...baseState,
     githubToken: longTermToken,
-    vsCodeVersion: baseState.vsCodeVersion || "1.98.0-insider"
+    vsCodeVersion: baseState.vsCodeVersion || "1.109.0-insider"
   };
   const init = {
     method: "GET",
