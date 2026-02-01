@@ -13,6 +13,11 @@ export const tokenPageScript = `
   const userCodeEl = document.getElementById('device-user-code');
   const verificationLink = document.getElementById('device-verification-link');
   const openLink = document.getElementById('device-open-link');
+  const deleteUserDialog = document.getElementById('delete-user-modal');
+  const deleteUserCancel = document.getElementById('delete-user-cancel');
+  const deleteUserUsernameEl = document.getElementById('delete-user-username');
+  const deleteUserUsernameInput = document.getElementById('delete-user-username-input');
+  const deleteUserPasswordInput = document.getElementById('delete-user-password');
 
   if (editButton && editor) {
     editButton.addEventListener('click', () => {
@@ -228,6 +233,34 @@ export const tokenPageScript = `
         setStatus('Canceled.');
         resetFlow();
         if (devicePanel) devicePanel.classList.add('hidden');
+      });
+    }
+  }
+
+  // Registered keys delete modal (one shared dialog).
+  if (deleteUserDialog && typeof deleteUserDialog.showModal === 'function') {
+    document.addEventListener('click', (e) => {
+      const target = e.target;
+      if (!target || typeof target.closest !== 'function') return;
+      const btn = target.closest('[data-delete-user]');
+      if (!btn) return;
+      e.preventDefault();
+
+      const username = btn.getAttribute('data-username') || '';
+      if (deleteUserUsernameEl) deleteUserUsernameEl.textContent = username;
+      if (deleteUserUsernameInput) deleteUserUsernameInput.value = username;
+      if (deleteUserPasswordInput) deleteUserPasswordInput.value = '';
+
+      deleteUserDialog.showModal();
+      if (deleteUserPasswordInput && typeof deleteUserPasswordInput.focus === 'function') {
+        deleteUserPasswordInput.focus();
+      }
+    });
+
+    if (deleteUserCancel) {
+      deleteUserCancel.addEventListener('click', (e) => {
+        e.preventDefault();
+        deleteUserDialog.close();
       });
     }
   }
