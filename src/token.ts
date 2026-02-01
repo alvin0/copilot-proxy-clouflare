@@ -23,26 +23,24 @@ function getUserIndexKey(username: string): string {
 function buildCredentialKey(
   username: string,
   password: string,
-  longTermToken: string,
-  shortToken: string
+  longTermToken: string
 ): string {
-  return `${CRED_PREFIX}${username}:${password}:${longTermToken}:${shortToken}`;
+  return `${CRED_PREFIX}${username}:${password}:${longTermToken}`;
 }
 
 function parseCredentialKey(key: string): {
   username: string;
   password: string;
   longTermToken: string;
-  shortToken: string;
 } | null {
   if (!key.startsWith(CRED_PREFIX)) return null;
   const raw = key.slice(CRED_PREFIX.length);
   const parts = raw.split(":");
-  if (parts.length < 4) return null;
-  const [username, password, longTermToken, ...rest] = parts;
-  const shortToken = rest.join(":");
-  if (!username || !password || !longTermToken || !shortToken) return null;
-  return { username, password, longTermToken, shortToken };
+  if (parts.length < 3) return null;
+  const [username, password, ...rest] = parts;
+  const longTermToken = rest.join(":");
+  if (!username || !password || !longTermToken) return null;
+  return { username, password, longTermToken };
 }
 
 export function isValidUsername(username: string): boolean {
@@ -165,7 +163,7 @@ async function getUserCredentialKey(username: string, kv?: KvNamespaceLike): Pro
 async function getUserCredentialFromIndex(
   username: string,
   kv?: KvNamespaceLike
-): Promise<{ key: string; username: string; password: string; longTermToken: string; shortToken: string } | null> {
+): Promise<{ key: string; username: string; password: string; longTermToken: string } | null> {
   const key = await getUserCredentialKey(username, kv);
   if (!key) return null;
   const parsed = parseCredentialKey(key);
@@ -200,8 +198,8 @@ export async function saveUserCredentials(
   if (existingKey) {
     await kv.delete(existingKey);
   }
-  const credKey = buildCredentialKey(username, password, longTermToken, "pending");
-  await kv.put(credKey, JSON.stringify({ expiry: 0 }));
+  const credKey = buildCredentialKey(username, password, longTermToken);
+  await kv.put(credKey, "");
   await kv.put(getUserIndexKey(username), credKey);
 }
 
@@ -220,18 +218,11 @@ async function getUserTempToken(
     return local.tempToken;
   }
 
-  const cachedMeta = await kv.get(record.key, "json");
-  if (
-    cachedMeta &&
-    typeof cachedMeta === "object" &&
-    "expiry" in cachedMeta &&
-    record.shortToken &&
-    record.shortToken !== "pending" &&
-    !isTokenExpired(record.shortToken)
-  ) {
-    const expiry = Number((cachedMeta as { expiry: number }).expiry) || extractTimestamp(record.shortToken);
-    tokenStore.set(record.longTermToken, { tempToken: record.shortToken, expiry });
-    return record.shortToken;
+  const cachedShort = await kv.get(record.key);
+  if (cachedShort && !isTokenExpired(cachedShort)) {
+    const expiry = extractTimestamp(cachedShort);
+    tokenStore.set(record.longTermToken, { tempToken: cachedShort, expiry });
+    return cachedShort;
   }
 
   const newToken = await fetchNewToken(record.longTermToken);
@@ -240,12 +231,9 @@ async function getUserTempToken(
   }
   const newExpiry = extractTimestamp(newToken);
   tokenStore.set(record.longTermToken, { tempToken: newToken, expiry: newExpiry });
-  const newKey = buildCredentialKey(username, password, record.longTermToken, newToken);
-  await kv.put(newKey, JSON.stringify({ expiry: newExpiry }));
-  await kv.put(getUserIndexKey(username), newKey);
-  if (record.key !== newKey) {
-    await kv.delete(record.key);
-  }
+  const now = Math.floor(Date.now() / 1000);
+  const ttlSeconds = Math.max(60, newExpiry - now - 60);
+  await kv.put(record.key, newToken, { expirationTtl: ttlSeconds });
   return newToken;
 }
 

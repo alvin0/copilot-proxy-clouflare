@@ -50,14 +50,24 @@ const requireUserAuth: MiddlewareHandler<{ Bindings: EnvBindings }> = async (c, 
 };
 
 app.get("/", async c => {
-  const status = c.req.query("status") as "saved" | "invalid" | "kv-missing" | "invalid-username" | "invalid-password" | undefined;
+  const status = c.req.query("status") as
+    | "saved"
+    | "invalid"
+    | "kv-missing"
+    | "invalid-username"
+    | "invalid-password"
+    | "auth-failed"
+    | undefined;
   const username = c.req.query("username")?.trim() || "";
+  const password = c.req.query("password")?.trim() || "";
   let usage;
   let usageError;
   let models;
   let modelsError;
   const storedToken = username ? await getUserLongTermToken(username, c.env?.TOKEN_KV) : null;
-  if (storedToken) {
+  const storedPassword = username ? await getUserPassword(username, c.env?.TOKEN_KV) : null;
+  const canReadUsage = Boolean(storedToken && storedPassword && password && storedPassword === password);
+  if (storedToken && canReadUsage) {
     try {
       const usageResponse = await getCopilotUsage(storedToken);
       usage = {
@@ -80,10 +90,12 @@ app.get("/", async c => {
       modelsError = e instanceof Error ? e.message : String(e);
     }
   }
+  const effectiveStatus = (storedToken && password && !canReadUsage) ? "auth-failed" : status;
   return c.html(renderTokenPage({
-    status,
+    status: effectiveStatus,
     hasToken: Boolean(storedToken),
     username: username || undefined,
+    password: password || undefined,
     usage,
     usageError,
     models,
@@ -124,7 +136,10 @@ app.post("/", async c => {
     return c.html(renderTokenPage({ status: "invalid-password" }), 400);
   }
   await saveUserCredentials(username, password, token, c.env.TOKEN_KV);
-  return c.redirect(`/?status=saved&username=${encodeURIComponent(username)}`, 303);
+  return c.redirect(
+    `/?status=saved&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
+    303
+  );
 });
 
 app.use("/:username/v1/*", requireUserAuth);

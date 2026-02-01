@@ -9,9 +9,10 @@ import { UsageSection } from "./components/UsageSection";
 import { tokenPageScript } from "./tokenPageScript";
 
 type TokenPageState = {
-  status?: "saved" | "invalid" | "kv-missing" | "invalid-username" | "invalid-password";
+  status?: "saved" | "invalid" | "kv-missing" | "invalid-username" | "invalid-password" | "auth-failed";
   hasToken?: boolean;
   username?: string;
+  password?: string;
   usage?: {
     chat: QuotaDetail;
     completions: QuotaDetail;
@@ -50,6 +51,47 @@ function TokenPage({ state }: { state: TokenPageState }) {
             <p className="mt-6 text-xs text-slate-400">
               Keep the generated password safe. It is required as `Authorization: Bearer &lt;password&gt;` for all API calls.
             </p>
+            {state.status === "saved" && state.username && state.password ? (
+              <div className="mt-4 rounded-lg border border-slate-800 bg-slate-950/40 p-4 text-sm text-slate-200">
+                <div className="text-xs uppercase tracking-wide text-slate-400">Saved credentials</div>
+                <div className="mt-2 space-y-1 font-mono text-xs text-slate-100">
+                  <div>Username: {state.username}</div>
+                  <div>Password: {state.password}</div>
+                </div>
+                <p className="mt-2 text-xs text-slate-400">
+                  Copy these now — they are required to call the API.
+                </p>
+              </div>
+            ) : null}
+
+            <div className="mt-6 rounded-lg border border-slate-800 bg-slate-950/40 p-4">
+              <div className="text-sm font-semibold text-slate-100">Load Usage / Models</div>
+              <p className="mt-1 text-xs text-slate-400">Enter your username and password to view quota and models.</p>
+              <form method="get" action="/" className="mt-4 grid gap-3 sm:grid-cols-2">
+                <input
+                  name="username"
+                  type="text"
+                  autoComplete="off"
+                  defaultValue={state.username || ""}
+                  placeholder="username"
+                  className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
+                />
+                <input
+                  name="password"
+                  type="text"
+                  autoComplete="off"
+                  defaultValue={state.password || ""}
+                  placeholder="acpc-XXXXXXXXXX"
+                  className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
+                />
+                <button
+                  type="submit"
+                  className="sm:col-span-2 rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-white"
+                >
+                  Load Usage & Models
+                </button>
+              </form>
+            </div>
             <UsageSection usage={state.usage} usageError={state.usageError} hasToken={state.hasToken} />
             <ModelsSection models={state.models} modelsError={state.modelsError} hasToken={state.hasToken} />
           </div>
