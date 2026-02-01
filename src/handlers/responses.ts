@@ -283,7 +283,7 @@ export async function handleResponses(
     vsCodeVersion: baseState.vsCodeVersion || "1.109.0-insider"
   };
   const headersObj = copilotHeaders(requestState, true);
-  const apiUrl = `${copilotBaseUrl(requestState)}/chat/completions`;
+  const apiUrl = `${copilotBaseUrl(requestState)}/v1/reqsponses`;
   const init: RequestInit = {
     method: "POST",
     headers: headersObj,
