@@ -185,31 +185,28 @@ function TokenPage({ state }: { state: TokenPageState }) {
               </div>
 
               {state.password && state.username ? (
-                <div className="grid gap-6 xl:grid-cols-12 xl:items-start">
-                  <div className="xl:col-span-7">
-                    <UsageSection
-                      usage={state.usage}
-                      usageError={state.usageError}
-                      hasToken={state.hasToken}
-                    />
-                    {state.usageDebug ? (
-                      <details className="mt-4 rounded-lg border border-slate-800 bg-slate-950/40 p-4 text-xs text-slate-300">
-                        <summary className="cursor-pointer text-xs text-slate-400">
-                          Debug: raw usage response
-                        </summary>
-                        <pre className="mt-3 whitespace-pre-wrap text-[11px] text-slate-200">
-                          {JSON.stringify(state.usageDebug, null, 2)}
-                        </pre>
-                      </details>
-                    ) : null}
-                  </div>
-                  <div className="xl:col-span-5">
-                    <ModelsSection
-                      models={state.models}
-                      modelsError={state.modelsError}
-                      hasToken={state.hasToken}
-                    />
-                  </div>
+                <div>
+                  <UsageSection
+                    usage={state.usage}
+                    usageError={state.usageError}
+                    hasToken={state.hasToken}
+                  />
+                  {state.usageDebug ? (
+                    <details className="mt-4 rounded-lg border border-slate-800 bg-slate-950/40 p-4 text-xs text-slate-300">
+                      <summary className="cursor-pointer text-xs text-slate-400">
+                        Debug: raw usage response
+                      </summary>
+                      <pre className="mt-3 whitespace-pre-wrap text-[11px] text-slate-200">
+                        {JSON.stringify(state.usageDebug, null, 2)}
+                      </pre>
+                    </details>
+                  ) : null}
+
+                  <ModelsSection
+                    models={state.models}
+                    modelsError={state.modelsError}
+                    hasToken={state.hasToken}
+                  />
                 </div>
               ) : (
                 <div className="rounded-lg border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
