@@ -20,6 +20,31 @@ function getUserIndexKey(username: string): string {
   return `${USER_PREFIX}${username}`;
 }
 
+export async function listRegisteredUsers(kv?: KvNamespaceLike): Promise<string[]> {
+  if (!kv?.list) return [];
+  const users: string[] = [];
+  let cursor: string | undefined;
+
+  // Iterate through all `user:` index keys to discover registered users.
+  // Limit is best-effort; Cloudflare may cap it anyway.
+  for (let i = 0; i < 50; i++) {
+    const res = await kv.list({ prefix: USER_PREFIX, limit: 1000, cursor });
+    for (const key of res.keys || []) {
+      if (key?.name?.startsWith(USER_PREFIX)) {
+        const username = key.name.slice(USER_PREFIX.length);
+        if (username) users.push(username);
+      }
+    }
+    if (res.list_complete) break;
+    cursor = res.cursor;
+    if (!cursor) break;
+  }
+
+  // Stable display order.
+  users.sort((a, b) => a.localeCompare(b));
+  return users;
+}
+
 function buildCredentialKey(
   username: string,
   password: string,
@@ -201,6 +226,24 @@ export async function saveUserCredentials(
   const credKey = buildCredentialKey(username, password, longTermToken);
   await kv.put(credKey, "");
   await kv.put(getUserIndexKey(username), credKey);
+}
+
+export async function deleteUserCredentials(
+  username: string,
+  password: string,
+  kv?: KvNamespaceLike
+): Promise<void> {
+  if (!kv) throw new Error("KV binding is missing");
+  if (!isValidUsername(username)) throw new Error("Invalid username");
+  if (!isValidPassword(password)) throw new Error("Invalid password");
+
+  const record = await getUserCredentialFromIndex(username, kv);
+  if (!record) throw new Error("Unknown user");
+  if (record.password !== password) throw new Error("Invalid credentials");
+
+  // Remove the user index and credential key (also removes any cached short-lived token stored at the credential key).
+  await kv.delete(getUserIndexKey(username));
+  await kv.delete(record.key);
 }
 
 async function getUserTempToken(

@@ -1,7 +1,16 @@
 import React from "react";
 
 type StatusBannerProps = {
-  status?: "saved" | "invalid" | "kv-missing" | "invalid-username" | "invalid-password" | "auth-failed";
+  status?:
+    | "saved"
+    | "invalid"
+    | "kv-missing"
+    | "invalid-username"
+    | "invalid-password"
+    | "auth-failed"
+    | "deleted"
+    | "delete-failed"
+    | "delete-not-found";
 };
 
 export function StatusBanner({ status }: StatusBannerProps) {
@@ -55,6 +64,33 @@ export function StatusBanner({ status }: StatusBannerProps) {
       <React.Fragment>
         <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
           KV binding is missing. Configure TOKEN_KV first.
+        </div>
+      </React.Fragment>
+    );
+  }
+  if (status === "deleted") {
+    return (
+      <React.Fragment>
+        <div className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+          Key deleted successfully.
+        </div>
+      </React.Fragment>
+    );
+  }
+  if (status === "delete-not-found") {
+    return (
+      <React.Fragment>
+        <div className="mb-4 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          Key not found.
+        </div>
+      </React.Fragment>
+    );
+  }
+  if (status === "delete-failed") {
+    return (
+      <React.Fragment>
+        <div className="mb-4 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          Delete failed. Please verify username and password.
         </div>
       </React.Fragment>
     );

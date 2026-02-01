@@ -12,6 +12,8 @@ import { renderTokenPage } from "./templates/tokenPage";
 import {
   getUserLongTermToken,
   getUserPassword,
+  listRegisteredUsers,
+  deleteUserCredentials,
   isValidPassword,
   isValidUsername,
   saveUserCredentials
@@ -57,6 +59,9 @@ app.get("/", async c => {
     | "invalid-username"
     | "invalid-password"
     | "auth-failed"
+    | "deleted"
+    | "delete-failed"
+    | "delete-not-found"
     | undefined;
   const username = c.req.query("username")?.trim() || "";
   const password = c.req.query("password")?.trim() || "";
@@ -66,9 +71,16 @@ app.get("/", async c => {
   let models;
   let modelsError;
   let usageDebug: unknown;
+  let registeredUsers: string[] = [];
+  let registeredUsersError: string | undefined;
   const storedToken = username ? await getUserLongTermToken(username, c.env?.TOKEN_KV) : null;
   const storedPassword = username ? await getUserPassword(username, c.env?.TOKEN_KV) : null;
   const canReadUsage = Boolean(storedToken && storedPassword && password && storedPassword === password);
+  try {
+    registeredUsers = await listRegisteredUsers(c.env?.TOKEN_KV);
+  } catch (e) {
+    registeredUsersError = e instanceof Error ? e.message : String(e);
+  }
   if (storedToken && canReadUsage) {
     try {
       const usageResponse = await getCopilotUsage(storedToken);
@@ -122,7 +134,9 @@ app.get("/", async c => {
     usage,
     usageError,
     models,
-    modelsError
+    modelsError,
+    registeredUsers,
+    registeredUsersError
   }));
 });
 
@@ -163,6 +177,28 @@ app.post("/", async c => {
     `/?status=saved&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
     303
   );
+});
+
+app.post("/users/delete", async c => {
+  if (!c.env?.TOKEN_KV) {
+    return c.html(renderTokenPage({ status: "kv-missing" }), 500);
+  }
+  const form = await c.req.formData();
+  const username = String(form.get("username") || "").trim();
+  const password = String(form.get("password") || "").trim();
+  if (!isValidUsername(username) || !isValidPassword(password)) {
+    return c.redirect("/?status=delete-failed", 303);
+  }
+  try {
+    await deleteUserCredentials(username, password, c.env.TOKEN_KV);
+    return c.redirect("/?status=deleted", 303);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (message === "Unknown user") {
+      return c.redirect("/?status=delete-not-found", 303);
+    }
+    return c.redirect("/?status=delete-failed", 303);
+  }
 });
 
 app.use("/:username/v1/*", requireUserAuth);

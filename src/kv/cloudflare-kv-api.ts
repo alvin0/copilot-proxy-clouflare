@@ -1,4 +1,4 @@
-import type { KvGetType, KvNamespaceLike, KvPutOptions, KvPutValue } from "./kv-types";
+import type { KvGetType, KvListOptions, KvListResult, KvNamespaceLike, KvPutOptions, KvPutValue } from "./kv-types";
 
 export type CloudflareKvApiConfig = {
   accountId: string;
@@ -15,6 +15,17 @@ function buildValuesUrl(config: CloudflareKvApiConfig, key: string, options?: Kv
   );
   if (options?.expirationTtl != null) url.searchParams.set("expiration_ttl", String(options.expirationTtl));
   if (options?.expiration != null) url.searchParams.set("expiration", String(options.expiration));
+  return url.toString();
+}
+
+function buildKeysUrl(config: CloudflareKvApiConfig, options?: KvListOptions): string {
+  const baseUrl = (config.baseUrl || "https://api.cloudflare.com").replace(/\/+$/, "");
+  const url = new URL(
+    `${baseUrl}/client/v4/accounts/${config.accountId}/storage/kv/namespaces/${config.namespaceId}/keys`
+  );
+  if (options?.prefix) url.searchParams.set("prefix", options.prefix);
+  if (options?.limit != null) url.searchParams.set("limit", String(options.limit));
+  if (options?.cursor) url.searchParams.set("cursor", options.cursor);
   return url.toString();
 }
 
@@ -74,6 +85,29 @@ export function createCloudflareKvApi(config: CloudflareKvApiConfig): KvNamespac
         const text = await resp.text().catch(() => "");
         throw new Error(`Cloudflare KV API delete failed (${resp.status}): ${text || resp.statusText}`);
       }
+    },
+
+    async list(options?: KvListOptions): Promise<KvListResult> {
+      const url = buildKeysUrl(config, options);
+      const resp = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${config.apiToken}`
+        }
+      });
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => "");
+        throw new Error(`Cloudflare KV API list failed (${resp.status}): ${text || resp.statusText}`);
+      }
+      const json = await resp.json() as {
+        success?: boolean;
+        result?: KvListResult;
+        errors?: unknown;
+      };
+      if (!json || json.success !== true || !json.result) {
+        throw new Error(`Cloudflare KV API list returned unexpected response`);
+      }
+      return json.result;
     }
   };
 }
