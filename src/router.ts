@@ -70,10 +70,14 @@ app.get("/", async c => {
   if (storedToken && canReadUsage) {
     try {
       const usageResponse = await getCopilotUsage(storedToken);
+      const snapshots = usageResponse.quota_snapshots;
+      if (!snapshots?.chat || !snapshots?.completions || !snapshots?.premium_interactions) {
+        throw new Error("Missing quota snapshot details.");
+      }
       usage = {
-        chat: usageResponse.quota_snapshots.chat,
-        completions: usageResponse.quota_snapshots.completions,
-        premium_interactions: usageResponse.quota_snapshots.premium_interactions,
+        chat: snapshots.chat,
+        completions: snapshots.completions,
+        premium_interactions: snapshots.premium_interactions,
         quota_reset_date: usageResponse.quota_reset_date,
         copilot_plan: usageResponse.copilot_plan
       };

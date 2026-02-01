@@ -36,7 +36,9 @@ export function UsageSection({ usage, usageError, hasToken }: UsageSectionProps)
     usage &&
     usage.chat &&
     usage.completions &&
-    usage.premium_interactions
+    usage.premium_interactions &&
+    usage.quota_reset_date &&
+    usage.copilot_plan
   );
 
   if (hasUsageDetails && usage) {

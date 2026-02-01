@@ -103,8 +103,16 @@ function TokenPage({ state }: { state: TokenPageState }) {
                 </button>
               </form>
             </div>
-            <UsageSection usage={state.usage} usageError={state.usageError} hasToken={state.hasToken} />
-            <ModelsSection models={state.models} modelsError={state.modelsError} hasToken={state.hasToken} />
+            {(state.password && state.username) ? (
+              <React.Fragment>
+                <UsageSection usage={state.usage} usageError={state.usageError} hasToken={state.hasToken} />
+                <ModelsSection models={state.models} modelsError={state.modelsError} hasToken={state.hasToken} />
+              </React.Fragment>
+            ) : (
+              <div className="mt-6 rounded-lg border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
+                Please log in to view usage and models.
+              </div>
+            )}
           </div>
         </div>
         <script dangerouslySetInnerHTML={{ __html: tokenPageScript }} />
