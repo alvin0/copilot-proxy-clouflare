@@ -64,7 +64,7 @@ export function UsageSection({ usage, usageError, hasToken }: UsageSectionProps)
     return (
       <React.Fragment>
         <div className="mt-6 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-          Failed to load usage: {usageError || "Missing quota details."}
+          Failed to load usage: {usageError || "Usage data is unavailable."}
         </div>
       </React.Fragment>
     );
