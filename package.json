@@ -1,5 +1,9 @@
 {
   "name": "copilot-proxy-clouflare",
+  "author": {
+    "name": "Châu Lâm Đình Ái",
+    "email": "chaulamdinhai@gmail.com"
+  },
   "private": true,
   "type": "module",
   "scripts": {
