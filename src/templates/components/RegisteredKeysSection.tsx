@@ -26,7 +26,7 @@ export function RegisteredKeysSection({ users, error }: RegisteredKeysSectionPro
       {users.length === 0 ? (
         <div className="mt-3 text-sm text-slate-300">No keys registered yet.</div>
       ) : (
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 max-h-[340px] space-y-3 overflow-y-auto pr-1">
           {users.map(username => (
             <div
               key={username}
