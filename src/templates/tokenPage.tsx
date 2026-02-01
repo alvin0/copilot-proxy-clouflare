@@ -40,11 +40,22 @@ function TokenPage({ state }: { state: TokenPageState }) {
       <body className="min-h-screen bg-slate-950 text-slate-100">
         <div className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-6">
           <div className="w-full rounded-2xl border border-slate-800 bg-slate-900/60 p-8 shadow-2xl">
-            <div className="mb-6">
-              <h1 className="text-2xl font-semibold tracking-tight">Set Long-Term Token</h1>
-              <p className="mt-2 text-sm text-slate-300">
-                Create a username + password pair and store its GitHub long-term token (ghu/gho) in KV.
-              </p>
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight">Set Long-Term Token</h1>
+                {/* <p className="mt-2 text-sm text-slate-300">
+                  Create a username + password pair and store its GitHub long-term token (ghu/gho) in KV.
+                </p> */}
+              </div>
+              <a
+                href={state.username && state.password
+                  ? `/chat?username=${encodeURIComponent(state.username)}&password=${encodeURIComponent(state.password)}`
+                  : "/chat"}
+                className="inline-flex items-center gap-2 self-start rounded-full border border-slate-800 px-3 py-1 text-xs text-slate-300 transition hover:border-slate-600 hover:text-slate-100 sm:self-auto"
+              >
+                <span>Go to Chat</span>
+                <span aria-hidden="true">→</span>
+              </a>
             </div>
             <StatusBanner status={state.status} />
             <TokenForm hasToken={state.hasToken} username={state.username} />

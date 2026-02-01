@@ -32,7 +32,14 @@ function QuotaCard({ title, detail }: { title: string; detail: QuotaDetail }) {
 }
 
 export function UsageSection({ usage, usageError, hasToken }: UsageSectionProps) {
-  if (usage) {
+  const hasUsageDetails = Boolean(
+    usage &&
+    usage.chat &&
+    usage.completions &&
+    usage.premium_interactions
+  );
+
+  if (hasUsageDetails && usage) {
     return (
       <React.Fragment>
         <section className="mt-8">
@@ -51,11 +58,11 @@ export function UsageSection({ usage, usageError, hasToken }: UsageSectionProps)
     );
   }
 
-  if (usageError) {
+  if (usageError || usage) {
     return (
       <React.Fragment>
         <div className="mt-6 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-          Failed to load usage: {usageError}
+          Failed to load usage: {usageError || "Missing quota details."}
         </div>
       </React.Fragment>
     );

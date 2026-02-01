@@ -15,10 +15,79 @@ export const chatPageScript = `
   const cancelClearEl = document.getElementById('cancel-clear');
   const confirmClearEl = document.getElementById('confirm-clear');
   const submitButton = form.querySelector('button[type="submit"]');
-  const username = document.body?.dataset?.username || '';
-  const password = document.body?.dataset?.password || '';
-  const apiBase = username ? '/' + username : '';
-  const authHeader = password ? { Authorization: 'Bearer ' + password } : {};
+  const usernameInput = document.getElementById('api-username');
+  const passwordInput = document.getElementById('api-password');
+  const authPanel = document.getElementById('auth-panel');
+  const toggleAuth = document.getElementById('toggle-auth');
+  const authSave = document.getElementById('auth-save');
+  const seedUsername = document.body?.dataset?.username || '';
+  const seedPassword = document.body?.dataset?.password || '';
+  const STORAGE_USER = 'acpc_username';
+  const STORAGE_PASS = 'acpc_password';
+
+  function getUsername() {
+    const value = usernameInput && typeof usernameInput.value === 'string'
+      ? usernameInput.value.trim()
+      : seedUsername;
+    return value;
+  }
+
+  function getPassword() {
+    const value = passwordInput && typeof passwordInput.value === 'string'
+      ? passwordInput.value.trim()
+      : seedPassword;
+    return value;
+  }
+
+  function setAuthPanelVisible(show) {
+    if (!authPanel) return;
+    authPanel.classList.toggle('hidden', !show);
+    if (toggleAuth) {
+      toggleAuth.textContent = show ? 'Hide Auth' : 'Auth';
+    }
+  }
+
+  function loadStoredAuth() {
+    try {
+      const storedUser = localStorage.getItem(STORAGE_USER) || '';
+      const storedPass = localStorage.getItem(STORAGE_PASS) || '';
+      if (usernameInput && storedUser && !usernameInput.value) usernameInput.value = storedUser;
+      if (passwordInput && storedPass && !passwordInput.value) passwordInput.value = storedPass;
+      if (storedUser && storedPass) setAuthPanelVisible(false);
+    } catch (_) {}
+  }
+
+  function persistAuth() {
+    try {
+      const user = getUsername();
+      const pass = getPassword();
+      if (user) localStorage.setItem(STORAGE_USER, user);
+      if (pass) localStorage.setItem(STORAGE_PASS, pass);
+    } catch (_) {}
+  }
+
+  if (toggleAuth) {
+    toggleAuth.addEventListener('click', () => {
+      if (!authPanel) return;
+      const isHidden = authPanel.classList.contains('hidden');
+      setAuthPanelVisible(isHidden);
+    });
+  }
+
+  if (authSave) {
+    authSave.addEventListener('click', () => {
+      const user = getUsername();
+      const pass = getPassword();
+      if (!user || !pass) {
+        showToast('Please enter username and password first.');
+        return;
+      }
+      persistAuth();
+      setAuthPanelVisible(false);
+      showToast('Auth saved.');
+    });
+  }
+  loadStoredAuth();
 
   const state = { messages: [], isSending: false, images: [], files: [], toastTimer: null };
 
@@ -392,10 +461,16 @@ export const chatPageScript = `
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const username = getUsername();
+    const password = getPassword();
     if (!username || !password) {
       showToast('Missing username or password. Open /chat?username=...&password=...');
       return;
     }
+    persistAuth();
+    setAuthPanelVisible(false);
+    const apiBase = '/' + username;
+    const authHeader = { Authorization: 'Bearer ' + password };
     const prompt = promptEl.value.trim();
     if (state.images.length > 0 && !selectedModelSupportsImages()) {
       showToast('Selected model does not support images.');

@@ -70,6 +70,13 @@ function ChatPage({ state }: { state: ChatPageState }) {
             </div>
             <div className="flex items-center gap-3">
               <button
+                id="toggle-auth"
+                type="button"
+                className="rounded-full border border-slate-800 px-3 py-1 text-xs text-slate-300 transition hover:border-slate-600 hover:text-slate-100"
+              >
+                Auth
+              </button>
+              <button
                 id="clear-chat"
                 type="button"
                 className="rounded-full border border-slate-800 px-3 py-1 text-xs text-slate-300 transition hover:border-slate-600 hover:text-slate-100"
@@ -79,6 +86,34 @@ function ChatPage({ state }: { state: ChatPageState }) {
               <a className="text-sm text-cyan-300 hover:text-cyan-200" href="/">Token Setup</a>
             </div>
           </header>
+
+          <section id="auth-panel" className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-300">
+              <input
+                id="api-username"
+                type="text"
+                autoComplete="off"
+                defaultValue={state.username || ""}
+                placeholder="username"
+                className="min-w-[160px] flex-1 rounded-full border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
+              />
+              <input
+                id="api-password"
+                type="text"
+                autoComplete="off"
+                defaultValue={state.password || ""}
+                placeholder="acpc-XXXXXXXXXX"
+                className="min-w-[220px] flex-1 rounded-full border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
+              />
+              <button
+                id="auth-save"
+                type="button"
+                className="rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-semibold text-slate-950 hover:bg-white"
+              >
+                Save
+              </button>
+            </div>
+          </section>
 
           <section className="flex max-h-[75vh] flex-1 flex-col rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
             <div id="messages" className="flex-1 min-h-0 space-y-4 overflow-y-auto pr-2"></div>
