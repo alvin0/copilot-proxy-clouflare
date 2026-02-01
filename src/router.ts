@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { handleChatCompletions } from "./handlers/chatCompletions";
 import { handleEmbeddings } from "./handlers/embeddings";
 import { getModelsWithCache, handleModels } from "./handlers/models";
+import { handleResponses } from "./handlers/responses";
 import { getCopilotUsage } from "./handlers/usage";
 import { renderChatPage } from "./templates/chatPage";
 import { renderTokenPage } from "./templates/tokenPage";
@@ -82,6 +83,9 @@ app.post("/", async c => {
 
 app.all("/v1/chat/completions", c =>
   handleChatCompletions(c.req.raw, undefined, c.env?.TOKEN_KV)
+);
+app.all("/v1/responses", c =>
+  handleResponses(c.req.raw, undefined, c.env?.TOKEN_KV)
 );
 app.all("/v1/embeddings", c =>
   handleEmbeddings(c.req.raw, undefined, c.env?.TOKEN_KV)
