@@ -17,7 +17,9 @@ function contentTypeOrFallback(resp: Response, fallback: string): string {
 export async function handleResponses(
   request: Request,
   longTermToken?: string,
-  kv?: KvNamespaceLike
+  kv?: KvNamespaceLike,
+  username?: string,
+  password?: string
 ): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders() });
@@ -38,7 +40,7 @@ export async function handleResponses(
 
   let token: string | null;
   try {
-    token = await getTokenFromRequest(request, longTermToken, kv);
+    token = await getTokenFromRequest(request, longTermToken, kv, username, password);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return sendError("Token processing failed: " + message, 500);

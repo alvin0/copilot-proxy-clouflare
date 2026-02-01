@@ -15,6 +15,10 @@ export const chatPageScript = `
   const cancelClearEl = document.getElementById('cancel-clear');
   const confirmClearEl = document.getElementById('confirm-clear');
   const submitButton = form.querySelector('button[type="submit"]');
+  const username = document.body?.dataset?.username || '';
+  const password = document.body?.dataset?.password || '';
+  const apiBase = username ? '/' + username : '';
+  const authHeader = password ? { Authorization: 'Bearer ' + password } : {};
 
   const state = { messages: [], isSending: false, images: [], files: [], toastTimer: null };
 
@@ -388,6 +392,10 @@ export const chatPageScript = `
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!username || !password) {
+      showToast('Missing username or password. Open /chat?username=...&password=...');
+      return;
+    }
     const prompt = promptEl.value.trim();
     if (state.images.length > 0 && !selectedModelSupportsImages()) {
       showToast('Selected model does not support images.');
@@ -461,9 +469,9 @@ export const chatPageScript = `
 
     if (!payload.stream) {
       try {
-        const res = await fetch('/v1/chat/completions', {
+        const res = await fetch(apiBase + '/v1/chat/completions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeader },
           body: JSON.stringify(payload)
         });
         if (!res.ok) {
@@ -482,9 +490,9 @@ export const chatPageScript = `
     }
 
     try {
-      const res = await fetch('/v1/chat/completions', {
+      const res = await fetch(apiBase + '/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify(payload)
       });
       if (!res.ok || !res.body) {

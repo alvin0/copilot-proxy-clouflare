@@ -2,9 +2,10 @@ import React from "react";
 
 type TokenFormProps = {
   hasToken?: boolean;
+  username?: string;
 };
 
-export function TokenForm({ hasToken }: TokenFormProps) {
+export function TokenForm({ hasToken, username }: TokenFormProps) {
   return (
     <React.Fragment>
       {hasToken ?
@@ -19,6 +20,49 @@ export function TokenForm({ hasToken }: TokenFormProps) {
 
       <div id="token-editor" className={hasToken ? "hidden" : ""}>
         <form id="token-form" method="post" action="/" className="space-y-4">
+          <div>
+            <label htmlFor="username" className="block text-sm font-medium text-slate-200">
+              Username
+            </label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              autoComplete="off"
+              required
+              defaultValue={username || ""}
+              placeholder="lowercase-with-hyphen"
+              pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
+            />
+            <p className="mt-1 text-xs text-slate-400">Lowercase letters, numbers, and hyphens only. No spaces.</p>
+          </div>
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-slate-200">
+              Password (Token acpc-XXXXXXXXXX, "acpc-" is required) 
+            </label>
+            <div className="mt-2 flex gap-2">
+              <input
+                id="password"
+                name="password"
+                type="text"
+                autoComplete="off"
+                required
+                placeholder="acpc-XXXXXXXXXX"
+                pattern="^acpc-[A-Za-z0-9]{10}$"
+                readOnly
+                className="flex-1 cursor-not-allowed rounded-lg border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
+              />
+              <button
+                id="password-generate"
+                type="button"
+                className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-slate-500"
+              >
+                Generate
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-slate-400">This is required for `Authorization: Bearer ...`.</p>
+          </div>
           <div>
             <label htmlFor="token" className="block text-sm font-medium text-slate-200">
               Long-Term Token
@@ -37,7 +81,7 @@ export function TokenForm({ hasToken }: TokenFormProps) {
             type="submit"
             className="w-full rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-300/60"
           >
-            Save Token
+            Save User Token
           </button>
         </form>
 
@@ -52,7 +96,7 @@ export function TokenForm({ hasToken }: TokenFormProps) {
             <div>
               <div className="text-sm font-semibold text-slate-100">Get token via GitHub</div>
               <div className="mt-1 text-xs text-slate-400">
-                This will open GitHub device login, then auto-save the issued token to KV.
+                This opens GitHub device login and fills the token field once authorized.
               </div>
             </div>
             <div className="flex gap-2">

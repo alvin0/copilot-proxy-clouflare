@@ -2,6 +2,9 @@ export const tokenPageScript = `
   const editButton = document.getElementById('token-edit');
   const editor = document.getElementById('token-editor');
   const form = document.getElementById('token-form');
+  const usernameInput = document.getElementById('username');
+  const passwordInput = document.getElementById('password');
+  const passwordGenerate = document.getElementById('password-generate');
   const tokenInput = document.getElementById('token');
   const startButton = document.getElementById('device-start');
   const cancelButton = document.getElementById('device-cancel');
@@ -54,6 +57,26 @@ export const tokenPageScript = `
       setRunning(false);
     }
 
+    function sanitizeUsername(value) {
+      return String(value || '')
+        .toLowerCase()
+        .replace(/\\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+    }
+
+    function generatePassword() {
+      const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      const bytes = new Uint8Array(10);
+      crypto.getRandomValues(bytes);
+      let body = '';
+      for (const b of bytes) {
+        body += alphabet[b % alphabet.length];
+      }
+      return 'acpc-' + body;
+    }
+
     function safeJson(resp) {
       return resp.json().catch(() => null);
     }
@@ -83,11 +106,8 @@ export const tokenPageScript = `
       const data = await safeJson(resp) || {};
 
       if (resp.status === 200 && data && typeof data.access_token === 'string' && data.access_token) {
-        setStatus('Authorized. Saving token...');
+        setStatus('Authorized. Token filled. Please enter username/password and save.');
         tokenInput.value = data.access_token;
-        // Submit the existing KV save form.
-        if (typeof form.requestSubmit === 'function') form.requestSubmit();
-        else form.submit();
         return;
       }
 
@@ -171,6 +191,35 @@ export const tokenPageScript = `
       e.preventDefault();
       startFlow();
     });
+
+    if (usernameInput) {
+      usernameInput.addEventListener('input', () => {
+        const raw = usernameInput.value;
+        usernameInput.value = raw.toLowerCase().replace(/[^a-z0-9-]/g, '');
+      });
+      usernameInput.addEventListener('blur', () => {
+        const raw = usernameInput.value;
+        const next = raw
+          .toLowerCase()
+          .replace(/\\s+/g, '-')
+          .replace(/[^a-z0-9-]/g, '')
+          .replace(/-+/g, '-');
+        usernameInput.value = next;
+      });
+    }
+
+    if (passwordGenerate && passwordInput) {
+      const ensurePassword = () => {
+        if (!passwordInput.value) passwordInput.value = generatePassword();
+      };
+      ensurePassword();
+      passwordGenerate.addEventListener('click', (e) => {
+        e.preventDefault();
+        passwordInput.value = generatePassword();
+        passwordInput.focus();
+        passwordInput.select();
+      });
+    }
 
     if (cancelButton) {
       cancelButton.addEventListener('click', (e) => {

@@ -1,7 +1,7 @@
 import React from "react";
 
 type StatusBannerProps = {
-  status?: "saved" | "invalid" | "kv-missing";
+  status?: "saved" | "invalid" | "kv-missing" | "invalid-username" | "invalid-password";
 };
 
 export function StatusBanner({ status }: StatusBannerProps) {
@@ -19,6 +19,24 @@ export function StatusBanner({ status }: StatusBannerProps) {
       <React.Fragment>
         <div className="mb-4 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
           Invalid token format. Please enter a ghu/gho token.
+        </div>
+      </React.Fragment>
+    );
+  }
+  if (status === "invalid-username") {
+    return (
+      <React.Fragment>
+        <div className="mb-4 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          Invalid username. Use lowercase letters, numbers, and hyphens only.
+        </div>
+      </React.Fragment>
+    );
+  }
+  if (status === "invalid-password") {
+    return (
+      <React.Fragment>
+        <div className="mb-4 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          Invalid password format. Please regenerate a strong password.
         </div>
       </React.Fragment>
     );

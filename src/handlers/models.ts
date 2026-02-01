@@ -60,7 +60,9 @@ export async function getModelsWithCache(
 export async function handleModels(
   request: Request,
   longTermToken?: string,
-  kv?: KvNamespaceLike
+  kv?: KvNamespaceLike,
+  username?: string,
+  password?: string
 ): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders() });
@@ -70,7 +72,7 @@ export async function handleModels(
   }
 
   let fetchedModels = defaultModels;
-  const token = await getTokenFromRequest(request, longTermToken, kv);
+  const token = await getTokenFromRequest(request, longTermToken, kv, username, password);
   if (token) {
     const accountType = resolveCopilotAccountType(request, baseState.accountType);
     const cache = await getModelsWithCache(token, kv, accountType);

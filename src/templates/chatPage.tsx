@@ -5,6 +5,8 @@ import { chatPageScript } from "./chatPageScript";
 
 type ChatPageState = {
   models: ModelWithFree[];
+  username?: string;
+  password?: string;
 };
 
 function ChatPage({ state }: { state: ChatPageState }) {
@@ -55,7 +57,11 @@ function ChatPage({ state }: { state: ChatPageState }) {
         <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
       </head>
-      <body className="h-screen overflow-hidden bg-slate-950 text-slate-100">
+      <body
+        className="h-screen overflow-hidden bg-slate-950 text-slate-100"
+        data-username={state.username || ""}
+        data-password={state.password || ""}
+      >
         <div className="mx-auto flex h-screen min-h-0 max-w-4xl flex-col gap-6 px-6 py-10">
           <header className="flex items-center justify-between">
             <div>
@@ -158,10 +164,10 @@ function ChatPage({ state }: { state: ChatPageState }) {
   );
 }
 
-export function renderChatPage(models: ModelWithFree[]): string {
+export function renderChatPage(models: ModelWithFree[], username?: string, password?: string): string {
   const markup = renderToString(
     <React.Fragment>
-      <ChatPage state={{ models }} />
+      <ChatPage state={{ models, username, password }} />
     </React.Fragment>
   );
   return `<!doctype html>${markup}`;

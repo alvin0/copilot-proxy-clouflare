@@ -110,7 +110,9 @@ function anthropicSseEvent(event: string, data: unknown): Uint8Array {
 export async function handleMessages(
   request: Request,
   longTermToken?: string,
-  kv?: KvNamespaceLike
+  kv?: KvNamespaceLike,
+  username?: string,
+  password?: string
 ): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders() });
@@ -131,7 +133,7 @@ export async function handleMessages(
 
   let token: string | null;
   try {
-    token = await getTokenFromRequest(request, longTermToken, kv);
+    token = await getTokenFromRequest(request, longTermToken, kv, username, password);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return sendAnthropicError("Token processing failed: " + message, 500);

@@ -9,8 +9,9 @@ import { UsageSection } from "./components/UsageSection";
 import { tokenPageScript } from "./tokenPageScript";
 
 type TokenPageState = {
-  status?: "saved" | "invalid" | "kv-missing";
+  status?: "saved" | "invalid" | "kv-missing" | "invalid-username" | "invalid-password";
   hasToken?: boolean;
+  username?: string;
   usage?: {
     chat: QuotaDetail;
     completions: QuotaDetail;
@@ -41,12 +42,14 @@ function TokenPage({ state }: { state: TokenPageState }) {
             <div className="mb-6">
               <h1 className="text-2xl font-semibold tracking-tight">Set Long-Term Token</h1>
               <p className="mt-2 text-sm text-slate-300">
-                Enter a GitHub long-term token (ghu/gho). The value is stored in KV and will overwrite any previous value.
+                Create a username + password pair and store its GitHub long-term token (ghu/gho) in KV.
               </p>
             </div>
             <StatusBanner status={state.status} />
-            <TokenForm hasToken={state.hasToken} />
-            <p className="mt-6 text-xs text-slate-400">For security, this page never displays the stored token.</p>
+            <TokenForm hasToken={state.hasToken} username={state.username} />
+            <p className="mt-6 text-xs text-slate-400">
+              Keep the generated password safe. It is required as `Authorization: Bearer &lt;password&gt;` for all API calls.
+            </p>
             <UsageSection usage={state.usage} usageError={state.usageError} hasToken={state.hasToken} />
             <ModelsSection models={state.models} modelsError={state.modelsError} hasToken={state.hasToken} />
           </div>
