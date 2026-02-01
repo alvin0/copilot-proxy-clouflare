@@ -10,9 +10,10 @@ import { renderChatPage } from "./templates/chatPage";
 import { renderTokenPage } from "./templates/tokenPage";
 import { getStoredLongTermToken } from "./token";
 import { withFreeFlag } from "./configs/free-models";
+import type { KvNamespaceLike } from "./kv/kv-types";
 
 type EnvBindings = {
-  TOKEN_KV?: KVNamespace;
+  TOKEN_KV?: KvNamespaceLike;
 };
 
 const app = new Hono<{ Bindings: EnvBindings }>();

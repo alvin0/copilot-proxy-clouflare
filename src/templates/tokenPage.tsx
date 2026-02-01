@@ -45,7 +45,7 @@ function TokenPage({ state }: { state: TokenPageState }) {
               </p>
             </div>
             <StatusBanner status={state.status} />
-            <TokenForm />
+            <TokenForm hasToken={state.hasToken} />
             <p className="mt-6 text-xs text-slate-400">For security, this page never displays the stored token.</p>
             <UsageSection usage={state.usage} usageError={state.usageError} hasToken={state.hasToken} />
             <ModelsSection models={state.models} modelsError={state.modelsError} hasToken={state.hasToken} />

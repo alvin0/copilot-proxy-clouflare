@@ -2,6 +2,7 @@ import { copilotBaseUrl, copilotHeaders, resolveCopilotAccountType } from "../co
 import { corsHeaders } from "../response";
 import { getTokenFromRequest } from "../token";
 import { state as baseState } from "../types/state";
+import type { KvNamespaceLike } from "../kv/kv-types";
 
 type JsonObject = Record<string, unknown>;
 
@@ -109,7 +110,7 @@ function anthropicSseEvent(event: string, data: unknown): Uint8Array {
 export async function handleMessages(
   request: Request,
   longTermToken?: string,
-  kv?: KVNamespace
+  kv?: KvNamespaceLike
 ): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders() });

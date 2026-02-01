@@ -1,4 +1,6 @@
 export const tokenPageScript = `
+  const editButton = document.getElementById('token-edit');
+  const editor = document.getElementById('token-editor');
   const form = document.getElementById('token-form');
   const tokenInput = document.getElementById('token');
   const startButton = document.getElementById('device-start');
@@ -8,6 +10,14 @@ export const tokenPageScript = `
   const userCodeEl = document.getElementById('device-user-code');
   const verificationLink = document.getElementById('device-verification-link');
   const openLink = document.getElementById('device-open-link');
+
+  if (editButton && editor) {
+    editButton.addEventListener('click', () => {
+      editor.classList.remove('hidden');
+      editButton.classList.add('hidden');
+      if (tokenInput && typeof tokenInput.focus === 'function') tokenInput.focus();
+    });
+  }
 
   if (!form || !tokenInput || !startButton || !devicePanel) {
     // Missing expected DOM; nothing to wire up.
@@ -173,4 +183,3 @@ export const tokenPageScript = `
     }
   }
 `;
-

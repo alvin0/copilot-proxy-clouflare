@@ -4,6 +4,7 @@ import { corsHeaders } from "../response";
 import { getTokenFromRequest } from "../token";
 import { Model, ModelsResponse } from "../types/get-models";
 import { state as baseState } from "../types/state";
+import type { KvNamespaceLike } from "../kv/kv-types";
 
 function getModelsCacheKey(accountType: string): string {
   return `modelsCache:${accountType || "individual"}`;
@@ -38,7 +39,7 @@ export async function fetchModels(
 
 export async function getModelsWithCache(
   token: string,
-  kv?: KVNamespace,
+  kv?: KvNamespaceLike,
   accountType: string = baseState.accountType
 ): Promise<ModelsCache> {
   if (kv) {
@@ -59,7 +60,7 @@ export async function getModelsWithCache(
 export async function handleModels(
   request: Request,
   longTermToken?: string,
-  kv?: KVNamespace
+  kv?: KvNamespaceLike
 ): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders() });

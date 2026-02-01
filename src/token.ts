@@ -1,6 +1,7 @@
 import { GITHUB_API_BASE_URL, githubHeaders } from "./configs/api-config";
 import { state as baseState } from "./types/state";
 import { tokenStore } from "./types/tokenStore";
+import type { KvNamespaceLike } from "./kv/kv-types";
 
 const inFlightTokenRequests = new Map<string, Promise<string | null>>();
 const KV_PREFIX = "token:";
@@ -70,7 +71,7 @@ function isTokenExpired(tokenStr: string, skewSeconds = 60): boolean {
 
 async function getValidTempToken(
   longTermToken: string,
-  kv?: KVNamespace
+  kv?: KvNamespaceLike
 ): Promise<string> {
   const record = tokenStore.get(longTermToken);
   if (record && record.tempToken && !isTokenExpired(record.tempToken)) {
@@ -107,7 +108,7 @@ async function getValidTempToken(
   return newToken;
 }
 
-export async function getStoredLongTermToken(kv?: KVNamespace): Promise<string | null> {
+export async function getStoredLongTermToken(kv?: KvNamespaceLike): Promise<string | null> {
   if (!kv) return null;
   const value = await kv.get(LONG_TERM_TOKEN_KEY);
   return value ? value.trim() : null;
@@ -116,7 +117,7 @@ export async function getStoredLongTermToken(kv?: KVNamespace): Promise<string |
 export async function getTokenFromRequest(
   request: Request,
   fallbackLongTermToken?: string,
-  kv?: KVNamespace
+  kv?: KvNamespaceLike
 ): Promise<string | null> {
   const envToken = fallbackLongTermToken?.trim();
   const kvToken = envToken ? null : await getStoredLongTermToken(kv);

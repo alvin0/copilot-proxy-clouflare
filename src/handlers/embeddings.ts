@@ -2,6 +2,7 @@ import { copilotBaseUrl, copilotHeaders, resolveCopilotAccountType } from "../co
 import { corsHeaders, sendError } from "../response";
 import { getTokenFromRequest } from "../token";
 import { state as baseState } from "../types/state";
+import type { KvNamespaceLike } from "../kv/kv-types";
 
 type JsonObject = Record<string, unknown>;
 
@@ -12,7 +13,7 @@ function isJsonObject(value: unknown): value is JsonObject {
 export async function handleEmbeddings(
   request: Request,
   longTermToken?: string,
-  kv?: KVNamespace
+  kv?: KvNamespaceLike
 ): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders() });

@@ -46,6 +46,9 @@ npm run deploy
 ```bash
 npm run dev
 ```
+Notes:
+- `npm run dev` runs a Node server (not Wrangler), so it can’t use KV bindings.
+- To enable KV in Node dev, set `CF_API_TOKEN`, `CF_ACCOUNT_ID`, and `CF_KV_NAMESPACE_ID` (see `.env.example`).
 
 ## Run (Cloudflare Wrangler)
 ```bash
