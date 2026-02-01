@@ -14,13 +14,25 @@ type TokenPageState = {
   username?: string;
   password?: string;
   usageDebug?: unknown;
-  usage?: {
-    chat: QuotaDetail;
-    completions: QuotaDetail;
-    premium_interactions: QuotaDetail;
-    quota_reset_date: string;
-    copilot_plan: string;
-  };
+  usage?: (
+    | {
+        kind: "standard";
+        access_type_sku?: string;
+        chat: QuotaDetail;
+        completions: QuotaDetail;
+        premium_interactions: QuotaDetail;
+        quota_reset_date?: string;
+        copilot_plan: string;
+      }
+    | {
+        kind: "limited";
+        access_type_sku?: string;
+        copilot_plan: string;
+        limited_user_quotas?: { chat: number; completions: number };
+        monthly_quotas?: { chat: number; completions: number };
+        limited_user_reset_date?: string;
+      }
+  );
   models?: {
     items: Model[];
     fetchedAt: string;

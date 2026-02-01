@@ -24,6 +24,23 @@ export interface CopilotUsageResponse {
   copilot_plan: string
   organization_login_list: Array<unknown>
   organization_list: Array<unknown>
-  quota_reset_date: string
-  quota_snapshots: QuotaSnapshots
+  quota_reset_date?: string
+  quota_snapshots?: QuotaSnapshots
+  limited_user_quotas?: {
+    chat: number
+    completions: number
+  }
+  limited_user_subscribed_day?: number
+  limited_user_reset_date?: string
+  monthly_quotas?: {
+    chat: number
+    completions: number
+  }
+  endpoints?: {
+    api?: string
+    proxy?: string
+    telemetry?: string
+    "origin-tracker"?: string
+  }
+  quota_reset_date_utc?: string
 }

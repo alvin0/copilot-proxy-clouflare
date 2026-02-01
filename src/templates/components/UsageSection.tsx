@@ -2,13 +2,25 @@ import React from "react";
 import { QuotaDetail } from "../../types/get-usage";
 
 type UsageSectionProps = {
-  usage?: {
-    chat: QuotaDetail;
-    completions: QuotaDetail;
-    premium_interactions: QuotaDetail;
-    quota_reset_date: string;
-    copilot_plan: string;
-  };
+  usage?: (
+    | {
+        kind: "standard";
+        access_type_sku?: string;
+        chat: QuotaDetail;
+        completions: QuotaDetail;
+        premium_interactions: QuotaDetail;
+        quota_reset_date?: string;
+        copilot_plan: string;
+      }
+    | {
+        kind: "limited";
+        access_type_sku?: string;
+        copilot_plan: string;
+        limited_user_quotas?: { chat: number; completions: number };
+        monthly_quotas?: { chat: number; completions: number };
+        limited_user_reset_date?: string;
+      }
+  );
   usageError?: string;
   hasToken?: boolean;
 };
@@ -34,14 +46,16 @@ function QuotaCard({ title, detail }: { title: string; detail: QuotaDetail }) {
 export function UsageSection({ usage, usageError, hasToken }: UsageSectionProps) {
   const hasUsageDetails = Boolean(
     usage &&
+    usage.kind === "standard" &&
     usage.chat &&
     usage.completions &&
     usage.premium_interactions &&
-    usage.quota_reset_date &&
     usage.copilot_plan
   );
 
-  if (hasUsageDetails && usage) {
+  if (usage && usage.kind === "limited") {
+    const limited = usage.limited_user_quotas;
+    const monthly = usage.monthly_quotas;
     return (
       <React.Fragment>
         <section className="mt-8">
@@ -49,7 +63,40 @@ export function UsageSection({ usage, usageError, hasToken }: UsageSectionProps)
             <h2 className="text-lg font-semibold text-slate-100">Usage Dashboard</h2>
             <span className="text-xs text-slate-400">Plan: {usage.copilot_plan}</span>
           </div>
-          <p className="mt-1 text-xs text-slate-400">Quota resets on {usage.quota_reset_date}</p>
+          <p className="mt-1 text-xs text-slate-400">
+            Access: {usage.access_type_sku || "limited free"} {usage.limited_user_reset_date ? `• resets on ${usage.limited_user_reset_date}` : ""}
+          </p>
+          <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
+            Free limited accounts consume tokens very quickly. Monitor your quota closely.
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+              <div className="text-xs text-slate-400">Limited quotas</div>
+              <div className="mt-2 text-sm text-slate-100">Chat: {limited?.chat ?? "N/A"}</div>
+              <div className="text-sm text-slate-100">Completions: {limited?.completions ?? "N/A"}</div>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+              <div className="text-xs text-slate-400">Monthly quotas</div>
+              <div className="mt-2 text-sm text-slate-100">Chat: {monthly?.chat ?? "N/A"}</div>
+              <div className="text-sm text-slate-100">Completions: {monthly?.completions ?? "N/A"}</div>
+            </div>
+          </div>
+        </section>
+      </React.Fragment>
+    );
+  }
+
+  if (hasUsageDetails && usage && usage.kind === "standard") {
+    return (
+      <React.Fragment>
+        <section className="mt-8">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-100">Usage Dashboard</h2>
+            <span className="text-xs text-slate-400">Plan: {usage.copilot_plan}</span>
+          </div>
+          <p className="mt-1 text-xs text-slate-400">
+            Quota resets on {usage.quota_reset_date || "N/A"}
+          </p>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <QuotaCard title="Chat" detail={usage.chat} />
             <QuotaCard title="Completions" detail={usage.completions} />

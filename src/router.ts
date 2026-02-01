@@ -73,17 +73,31 @@ app.get("/", async c => {
     try {
       const usageResponse = await getCopilotUsage(storedToken);
       if (debug) usageDebug = usageResponse;
-      const snapshots = usageResponse.quota_snapshots;
-      if (!snapshots?.chat || !snapshots?.completions || !snapshots?.premium_interactions) {
-        usageError = "Usage data not available for this account.";
-      } else {
+
+      if (usageResponse.access_type_sku === "free_limited_copilot") {
         usage = {
-          chat: snapshots.chat,
-          completions: snapshots.completions,
-          premium_interactions: snapshots.premium_interactions,
-          quota_reset_date: usageResponse.quota_reset_date,
-          copilot_plan: usageResponse.copilot_plan
+          kind: "limited" as const,
+          access_type_sku: usageResponse.access_type_sku,
+          copilot_plan: usageResponse.copilot_plan,
+          limited_user_quotas: usageResponse.limited_user_quotas,
+          monthly_quotas: usageResponse.monthly_quotas,
+          limited_user_reset_date: usageResponse.limited_user_reset_date
         };
+      } else {
+        const snapshots = usageResponse.quota_snapshots;
+        if (!snapshots?.chat || !snapshots?.completions || !snapshots?.premium_interactions) {
+          usageError = "Usage data not available for this account.";
+        } else {
+          usage = {
+            kind: "standard" as const,
+            access_type_sku: usageResponse.access_type_sku,
+            chat: snapshots.chat,
+            completions: snapshots.completions,
+            premium_interactions: snapshots.premium_interactions,
+            quota_reset_date: usageResponse.quota_reset_date,
+            copilot_plan: usageResponse.copilot_plan
+          };
+        }
       }
     } catch (e) {
       usageError = e instanceof Error ? e.message : String(e);
