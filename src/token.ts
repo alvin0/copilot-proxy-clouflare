@@ -81,7 +81,7 @@ async function fetchNewToken(longTermToken: string): Promise<string | null> {
   const requestState = {
     ...baseState,
     githubToken: longTermToken,
-    vsCodeVersion: baseState.vsCodeVersion || "1.109.0-insider"
+    vsCodeVersion: baseState.vsCodeVersion || "1.109.2"
   };
   const init = {
     method: "GET",
