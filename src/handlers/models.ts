@@ -24,7 +24,7 @@ export async function fetchModels(
     ...baseState,
     accountType,
     copilotToken: token,
-    vsCodeVersion: baseState.vsCodeVersion || "1.109.2"
+    vsCodeVersion: baseState.vsCodeVersion || "1.110.0"
   };
   const headersObj = copilotHeaders(requestState);
   const apiUrl = `${copilotBaseUrl(requestState)}/models`;

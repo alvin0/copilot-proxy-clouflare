@@ -6,7 +6,9 @@ export const FREE_ID_MODELS = [
   "gpt-5-mini",
   "gpt-4o-2024-11-20",
   "grok-code-fast-1",
-  "oswe-vscode-prime"
+  "oswe-vscode-prime",
+  "gpt-4o",
+  "gpt-4.1"
 ];
 
 const FREE_ID_MODEL_SET = new Set(FREE_ID_MODELS);
