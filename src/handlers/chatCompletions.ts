@@ -48,7 +48,7 @@ export async function handleChatCompletions(
     ...baseState,
     accountType: resolveCopilotAccountType(request, baseState.accountType),
     copilotToken: token,
-    vsCodeVersion: baseState.vsCodeVersion || "1.110.0"
+    vsCodeVersion: baseState.vsCodeVersion || "1.112.0"
   };
   const headersObj = copilotHeaders(requestState, true);
   const apiUrl = `${copilotBaseUrl(requestState)}/chat/completions`;
